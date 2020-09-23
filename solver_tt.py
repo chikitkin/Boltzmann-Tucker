@@ -86,8 +86,8 @@ class VelocityGrid:
 		
 		self.v2 = (self.vx_tt*self.vx_tt + self.vy_tt*self.vy_tt + self.vz_tt*self.vz_tt).round(1e-7, rmax = 2)
 		
-		self.zero_tt = 0. * tt.ones((self.nvx, self.nvy, self.nvz))
-		self.ones_tt = tt.ones((self.nvx, self.nvy, self.nvz))
+		self.zero = 0. * tt.ones((self.nvx, self.nvy, self.nvz))
+		self.ones = tt.ones((self.nvx, self.nvy, self.nvz))
 
 class GasParams:
     Na = 6.02214129e+23 # Avogadro constant
@@ -203,7 +203,7 @@ def comp_j(f, v, gas_params, tol):
 	
 	return J
 
-def save(filename, f, L, N):
+def save(filename, f, L):
     """ Save the solution into a file
     """
     
@@ -217,7 +217,7 @@ def save(filename, f, L, N):
     
     np.save(filename, F)#, fmt='%s')
     
-def load(filename, L, N):
+def load(filename, L, n0, n1, n2):
     """ Load the solution from a file
     """
     
@@ -227,10 +227,25 @@ def load(filename, L, N):
     
     for i in range(L):
         
-        f.append(tt.rand([N, N, N], 3, F[:4, i]))
+        f.append(tt.rand([n0, n1, n2], 3, F[:4, i]))
         f[i].core = F[4:f[i].core.size+4, i]
         
     return f
+
+class Config:
+	
+	def __init__(CFL, filename, init):
+		
+		self.CFL = CFL
+		
+		self.filename = filename
+
+class Solution:
+	
+	def __init__(gas_params, problem, mesh, v, config):
+		
+		
+		
 
 def solver(gas_params, problem, mesh, v, nt, CFL, tol, filename, init = '0'):
     """Solve Boltzmann equation with model collision integral 
@@ -262,15 +277,15 @@ def solver(gas_params, problem, mesh, v, nt, CFL, tol, filename, init = '0'):
     # Initialize main arrays and lists
     #
     vn = [None] * mesh.nf # list of tensors of normal velocities at each mesh face  
-    vn_tmp = np.zeros((nv, nv, nv))
+    vn_tmp = np.zeros((v.nvx, v.nvy, v.nvz))
     vnm = [None] * mesh.nf # negative part of vn: 0.5 * (vn - |vn|)
     vnp = [None] * mesh.nf # positive part of vn: 0.5 * (vn + |vn|) 
     vn_abs = [None] * mesh.nf # approximations of |vn|
 	
     vn_error = 0.
     for jf in range(mesh.nf):
-        vn_tmp = mesh.face_normals[jf, 0] * vx + mesh.face_normals[jf, 1] * vy + mesh.face_normals[jf, 2] * vz
-        vn[jf] = mesh.face_normals[jf, 0] * vx_tt + mesh.face_normals[jf, 1] * vy_tt + mesh.face_normals[jf, 2] * vz_tt
+        vn_tmp = mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy + mesh.face_normals[jf, 2] * v.vz
+        vn[jf] = mesh.face_normals[jf, 0] * v.vx_tt + mesh.face_normals[jf, 1] * v.vy_tt + mesh.face_normals[jf, 2] * v.vz_tt
         vnp[jf] = tt.tensor(np.where(vn_tmp > 0, vn_tmp, 0.), eps = tol)
         vnm[jf] = tt.tensor(np.where(vn_tmp < 0, vn_tmp, 0.), eps = tol)
         vn_abs[jf] = tt.tensor(np.abs(vn_tmp), rmax = 4)
@@ -279,20 +294,20 @@ def solver(gas_params, problem, mesh, v, nt, CFL, tol, filename, init = '0'):
     print('max||vn_abs_tt - vn_abs||_F/max||vn_abs||_F = ', vn_error)
 
     h = np.min(mesh.cell_diam)
-    tau = h * CFL / (np.max(vx_) * (3.**0.5))
+    tau = h * CFL / (np.max(v.vx_) * (3.**0.5))
 
     diag = [None] * mesh.nc # part of diagonal coefficient in implicit scheme
     diag_r1 = [None] * mesh.nc
     # precompute diag
     # simple approximation for v_abs
-    vn_abs_r1 = tt.tensor((vx**2 + vy**2 + vz**2)**0.5, rmax = 1)
+    vn_abs_r1 = tt.tensor((v.vx**2 + v.vy**2 + v.vz**2)**0.5, rmax = 1)
     for ic in range(mesh.nc):
-        diag_temp = np.zeros((nv, nv, nv))
+        diag_temp = np.zeros((v.nvx, v.nvy, v.nvz))
         diag_sc = 0.
         for j in range(6):
             jf = mesh.cell_face_list[ic, j]
-            vn_full = (mesh.face_normals[jf, 0] * vx + mesh.face_normals[jf, 1] * vy \
-                       + mesh.face_normals[jf, 2] * vz) * mesh.cell_face_normal_direction[ic, j]
+            vn_full = (mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy \
+                       + mesh.face_normals[jf, 2] * v.vz) * mesh.cell_face_normal_direction[ic, j]
             vnp_full = np.where(vn_full > 0, vn_full, 0.)
             vn_abs_full = np.abs(vn_full)
             diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
@@ -322,7 +337,7 @@ def solver(gas_params, problem, mesh, v, nt, CFL, tol, filename, init = '0'):
             f[i] = problem.f_init(x, y, z, vx, vy, vz)
     else:
 #        restart from distribution function
-        f = load_tt(init, mesh.nc, nv)
+        f = load_tt(init, mesh.nc, v.nvx, v.nvy, v.nvz)
 #        restart form macroparameters array
 #        init_data = np.loadtxt(init)
 #        for ic in range(mesh.nc):
@@ -385,7 +400,7 @@ def solver(gas_params, problem, mesh, v, nt, CFL, tol, filename, init = '0'):
 
         # computation of the right-hand side
         for ic in range(mesh.nc):
-            rhs[ic] = zero_tt.copy()
+            rhs[ic] = v.zero_tt.copy()
             # sum up fluxes from all faces of this cell
             for j in range(6):
 
