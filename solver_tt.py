@@ -1,8 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
 plt.switch_backend('agg')
-import matplotlib.cm as cm
-import time
 from read_starcd import write_tecplot
 import tt
 
@@ -63,7 +61,7 @@ def div_tt(a, b):
     return c
 
 class VelocityGrid:
-    def __init__(vx_, vy_, vz_):
+    def __init__(self, vx_, vy_, vz_):
         self.vx_ = vx_
         self.vy_ = vy_
         self.vz_ = vz_
@@ -152,53 +150,51 @@ def set_bc(gas_params, bc_type, bc_data, f, v, vn, vnp, vnm, tol):
         n_wall = - Ni/ Nr
         return n_wall * fmax
 
-def comp_macro_params(f, v, gas_params, tol):
+def comp_macro_params(f, v, gas_params):
     # takes "F" with (1, 1, 1, 1) ranks to perform to_list function
     # takes precomputed "ones_tt" tensor
     # "ranks" array for mean ranks
     # much less rounding
-    Rg = gas_params.Rg
     n = v.hv3 * tt.sum(f)
     if n <= 0.:
         n = 1e+10
 
-    ux = (1. / n) * v.hv3 * tt.sum(vx_tt * f)
-    uy = (1. / n) * v.hv3 * tt.sum(vy_tt * f)
-    uz = (1. / n) * v.hv3 * tt.sum(vz_tt * f)
+    ux = (1. / n) * v.hv3 * tt.sum(v.vx_tt * f)
+    uy = (1. / n) * v.hv3 * tt.sum(v.vy_tt * f)
+    uz = (1. / n) * v.hv3 * tt.sum(v.vz_tt * f)
 
     u2 = ux*ux + uy*uy + uz*uz
 
-    T = (1. / (3. * n * Rg)) * (v.hv3 * tt.sum((v2 * f)) - n * u2)
+    T = (1. / (3. * n * gas_params.Rg)) * (v.hv3 * tt.sum((v.v2 * f)) - n * u2)
     if T <= 0.:
         T = 1.
 
     rho = gas_params.m * n
-    p = rho * Rg * T
+    p = rho * gas_params.Rg * T
     mu = gas_params.mu(T)
     nu = p / mu
 
     return n, ux, uy, uz, T, rho, p, nu
 
-def comp_j(f, v, gas_params, tol):
+def comp_j(f, v, gas_params):
 
-    n, ux, uy, uz, T, rho, p, nu = comp_macro_params(f, v, gas_params, tol)
+    n, ux, uy, uz, T, rho, p, nu = comp_macro_params(f, v, gas_params)
 
-    cx = tt_from_factors((1. / ((2. * Rg * T) ** (1. / 2.))) * (vx_ - ux), np.ones(self.nvy), np.ones(self.nvz))
-    cy = tt_from_factors(np.ones(self.nvx), (1. / ((2. * Rg * T) ** (1. / 2.))) * (vy_ - uy), np.ones(self.nvz))
-    cz = tt_from_factors(np.ones(self.nvx), np.ones(self.nvy), (1. / ((2. * Rg * T) ** (1. / 2.))) * (vz_ - uz))
+    cx = tt_from_factors((1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vx_ - ux), np.ones(v.nvy), np.ones(v.nvz))
+    cy = tt_from_factors(np.ones(v.nvx), (1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vy_ - uy), np.ones(v.nvz))
+    cz = tt_from_factors(np.ones(v.nvx), np.ones(v.nvy), (1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vz_ - uz))
 
-    c2 = ((cx*cx) + (cy*cy) + (cz*cz)).round(1e-7, rmax = 2)
+    c2 = ((cx*cx) + (cy*cy) + (cz*cz)).round(1e-7) #, rmax = 2)
 
-    Sx = (1. / n) * (hv ** 3) * tt.sum(cx * c2 * f)
-    Sy = (1. / n) * (hv ** 3) * tt.sum(cy * c2 * f)
-    Sz = (1. / n) * (hv ** 3) * tt.sum(cz * c2 * f)
+    Sx = (1. / n) * v.hv3 * tt.sum(cx * c2 * f)
+    Sy = (1. / n) * v.hv3 * tt.sum(cy * c2 * f)
+    Sz = (1. / n) * v.hv3 * tt.sum(cz * c2 * f)
 
-    fmax = f_maxwell_tt(v, n, ux, uy, uz, T, Rg)
+    fmax = f_maxwell_tt(v, n, ux, uy, uz, T, gas_params.Rg)
 
-    f_plus = fmax * (v.ones_tt + ((4. / 5.) * (1. - gas_params.Pr) * (cx*Sx + cy*Sy + cz*Sz) * ((c2 - (5. / 2.) * v.ones_tt))))
-    f_plus = f_plus.round(tol)
+    f_plus = fmax * (v.ones + ((4. / 5.) * (1. - gas_params.Pr) * (cx*Sx + cy*Sy + cz*Sz) * ((c2 - (5. / 2.) * v.ones))))
     J = nu * (f_plus - f)
-    J = J.round(tol)
+    J = J.round(1e-7) #, rmax = 2)
 
     return J, n, ux, uy, uz, T, rho, p, nu
 
@@ -233,7 +229,7 @@ def load(filename, L, n0, n1, n2):
 
 class Config:
 
-    def __init__(self, CFL, tol, filename, init_type = 'default', init_filename = '0', res_filename, tec_save_step):
+    def __init__(self, CFL, tol, filename, init_type = 'default', init_filename = None, res_filename = None, tec_save_step = 1e+5):
 
         self.CFL = CFL
         self.tol = tol
@@ -270,8 +266,6 @@ class Solution:
             self.vnp[jf] = tt.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
             self.vnm[jf] = tt.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
             self.vn_abs[jf] = tt.tensor(np.abs(self.vn_tmp), rmax = 4)
-            self.vn_error = max(self.vn_error, np.linalg.norm(self.vn_abs[jf].full() - np.abs(self.vn_tmp))/
-                           np.linalg.norm(np.abs(self.vn_tmp)))
 
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))
@@ -308,7 +302,7 @@ class Solution:
                 x = mesh.cell_center_coo[i, 0]
                 y = mesh.cell_center_coo[i, 1]
                 z = mesh.cell_center_coo[i, 2]
-                self.f[i] = problem.f_init(x, y, z, vx, vy, vz)
+                self.f[i] = problem.f_init(x, y, z, v)
         elif (config.init_type == 'restart'):
             # restart from distribution function
             self.f = load(config.init_filename, mesh.nc, v.nvx, v.nvy, v.nvz)
@@ -316,7 +310,7 @@ class Solution:
             # restart form macroparameters array
             init_data = np.loadtxt(config.init_filename)
             for ic in range(mesh.nc):
-                self.f[ic] = f_maxwell_tt(v, init_data[ic, 5], init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], gas_params.Rg)
+                self.f[ic] = f_maxwell_tt(v, init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], init_data[ic, 5], gas_params.Rg)
 
         # TODO: may be join f_plus and f_minus in one array
         self.f_plus = [None] * mesh.nf # Reconstructed values on the right
@@ -348,8 +342,8 @@ class Solution:
     def write_tec(self):
 
         fig, ax = plt.subplots(figsize = (20,10))
-        line, = ax.semilogy(frob_norm_iter/frob_norm_iter[0])
-        ax.set(title='$Steps =$' + str(it))
+        line, = ax.semilogy(self.frob_norm_iter/self.frob_norm_iter[0])
+        ax.set(title='$Steps =$' + str(self.it))
         plt.savefig('norm_iter.png')
         plt.close()
 
@@ -372,9 +366,9 @@ class Solution:
         self.config = config
         self.tau = self.h * config.CFL / (np.max(np.abs(self.v.vx_)) * (3.**0.5))
 
-        it = 0
-        while(it < nt):
-            it += 1
+        self.it = 0
+        while(self.it < nt):
+            self.it += 1
             # reconstruction for inner faces
             # 1st order
             for ic in range(self.mesh.nc):
@@ -413,9 +407,9 @@ class Solution:
                     self.rhs[ic] = self.rhs[ic].round(config.tol)
                 # Compute macroparameters and collision integral
                 J, self.n[ic], self.ux[ic], self.uy[ic], self.uz[ic], self.T[ic], self.rho[ic], self.p[ic], self.nu[ic] = \
-                comp_j(self.f[ic], self.v, self.gas_params, config.tol)
+                comp_j(self.f[ic], self.v, self.gas_params)
                 self.rhs[ic] += J
-                self.rhs[ic] = self.rhs[ic].round(tol)
+                self.rhs[ic] = self.rhs[ic].round(config.tol)
 
             self.frob_norm_iter = np.append(self.frob_norm_iter, np.sqrt(sum([(self.rhs[ic].norm())**2 for ic in range(self.mesh.nc)])))
 
@@ -449,8 +443,8 @@ class Solution:
                         * vnm_loc * self.df[icn]
                         self.df[ic] = self.df[ic].round(config.tol)
                 # divide by diagonal coefficient
-                diag_temp = (self.v.ones * (1./self.tau + nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
-                self.df[ic] = div_tt(df[ic], diag_temp)
+                diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+                self.df[ic] = div_tt(self.df[ic], diag_temp)
             #
             # Forward sweep
             #
@@ -484,9 +478,9 @@ class Solution:
             end of LU-SGS iteration
             '''
                     # save rhs norm and tec tile
-            if ((it % config.tec_save_step) == 0):
+            if ((self.it % config.tec_save_step) == 0):
 
                 self.write_tec()
 
-            save(config.filename, self.f, self.mesh.nc)
-            self.write_tec()
+        save(config.filename, self.f, self.mesh.nc)
+        self.write_tec()

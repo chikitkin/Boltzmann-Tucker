@@ -48,7 +48,7 @@ vx_ = np.linspace(-vmax+hv/2, vmax-hv/2, nv) # coordinates of velocity nodes
 
 v = Boltzmann.VelocityGrid(vx_, vx_, vx_)
 
-f_init = lambda x, y, z, vx, vy, vz: Boltzmann.f_maxwell_tt(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
+f_init = lambda x, y, z, v: Boltzmann.f_maxwell_tt(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
 f_bound = Boltzmann.f_maxwell_tt(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
 #print(f_bound)
 fmax = Boltzmann.f_maxwell_tt(v, 1., 0., 0., 0., T_w, gas_params.Rg)
@@ -78,9 +78,11 @@ log = open('log.txt', 'a')
 log.write('Mach  = ' + str(Mach) + '\n')
 log.close()
 
-
+print 'Initialization...'
+t1 = time.time()
 S = Boltzmann.Solution(gas_params, problem, mesh, v, config)
-
+t2 = time.time()
+print 'Complete! Took', str(t2 - t1), 'seconds'
 
 nt = 2000
 t1 = time.time()
