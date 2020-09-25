@@ -4,16 +4,6 @@ plt.switch_backend('agg')
 from read_starcd import write_tecplot
 import tt
 
-class MacroParams:
-    def __init__(self, n, ux, uy, uz, T, par):
-        self.n = n
-        self.ux = ux
-        self.uy = uy
-        self.uz = uz
-        self.T = T
-        self.rho =  par.m * self.n
-        self.p = self.rho * par.Rg * self.T
-
 def f_maxwell(v, n, ux, uy, uz, T, Rg):
     """Compute maxwell distribution function on cartesian velocity mesh
 
@@ -60,13 +50,19 @@ def div_tt(a, b):
 
     return c
 
-def symmetry(a, ax):
-
+def reflect_tt(a, ax):
     if (ax == 'x'):
-        l = a.to_list(f)
+        l = a.to_list(a)
         l[0] = l[0][:,::-1,:]
         return a.from_list(l)
-
+    elif (ax == 'y'):
+        l = a.to_list(a)
+        l[1] = l[1][:,::-1,:]
+        return a.from_list(l)
+    elif (ax == 'z'):
+        l = a.to_list(a)
+        l[2] = l[2][:,::-1,:]
+        return a.from_list(l)
 
 class VelocityGrid:
     def __init__(self, vx_, vy_, vz_):
@@ -131,17 +127,11 @@ def set_bc(gas_params, bc_type, bc_data, f, v, vn, vnp, vnm, tol):
     """
     # TODO: create general function for symmetrical reflection of a tensor in one dimesnion
     if (bc_type == 'sym-x'): # symmetry in x
-        l = f.to_list(f)
-        l[0] = l[0][:,::-1,:]
-        return f.from_list(l)
+        return reflect_tt(f, 'x')
     elif (bc_type == 'sym-y'): # symmetry in y
-        l = f.to_list(f)
-        l[1] = l[1][:,::-1,:]
-        return f.from_list(l)
+        return reflect_tt(f, 'y')
     elif (bc_type == 'sym-z'): # symmetry in z
-        l = f.to_list(f)
-        l[2] = l[2][:,::-1,:]
-        return f.from_list(l)
+        return reflect_tt(f, 'z')
     elif (bc_type == 'sym'): # zero derivative
         return f.copy()
     elif (bc_type == 'in'): # inlet
