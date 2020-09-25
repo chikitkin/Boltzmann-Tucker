@@ -233,14 +233,22 @@ def load(filename, L, n0, n1, n2):
 
 class Config:
 
+<<<<<<< HEAD
+    def __init__(self, CFL, tol, filename, init_type = 'default', init_filename = '0', res_filename, tec_save_step):
+=======
     def __init__(self, CFL, tol, filename, init = '0', init_filename = '0', res_filename, tec_save_step):
+>>>>>>> 9990a9e0b8fe1780caea2e58e2e79edc4a1a47a3
 
         self.CFL = CFL
         self.tol = tol
 
         self.filename = filename
 
+<<<<<<< HEAD
+        self.init_type = init_type
+=======
         self.init = init
+>>>>>>> 9990a9e0b8fe1780caea2e58e2e79edc4a1a47a3
         self.init_filename = init_filename
 
         self.res_filename = res_filename
@@ -302,16 +310,27 @@ class Solution:
 
         # set initial condition
         self.f = [None] * self.mesh.nc # RENAME f!
+<<<<<<< HEAD
+        if (config.init_type == 'default'):
+=======
         if (config.init == 'default'):
+>>>>>>> 9990a9e0b8fe1780caea2e58e2e79edc4a1a47a3
             for i in range(mesh.nc):
                 x = mesh.cell_center_coo[i, 0]
                 y = mesh.cell_center_coo[i, 1]
                 z = mesh.cell_center_coo[i, 2]
                 self.f[i] = problem.f_init(x, y, z, vx, vy, vz)
+<<<<<<< HEAD
+        elif (config.init_type == 'restart'):
+            # restart from distribution function
+            self.f = load(config.init_filename, mesh.nc, v.nvx, v.nvy, v.nvz)
+        elif (config.init_type == 'macro_restart'):
+=======
         elif (config.init == 'restart'):
             # restart from distribution function
             self.f = load(config.init_filename, mesh.nc, v.nvx, v.nvy, v.nvz)
         elif (config.init == 'macro_restart'):
+>>>>>>> 9990a9e0b8fe1780caea2e58e2e79edc4a1a47a3
             # restart form macroparameters array
             init_data = np.loadtxt(config.init_filename)
             for ic in range(mesh.nc):
@@ -407,7 +426,10 @@ class Solution:
                 self.rhs[ic] = self.v.zero.copy()
                 # sum up fluxes from all faces of this cell
                 for j in range(6):
+<<<<<<< HEAD
+=======
 
+>>>>>>> 9990a9e0b8fe1780caea2e58e2e79edc4a1a47a3
                     jf = self.mesh.cell_face_list[ic, j]
                     self.rhs[ic] += -(self.mesh.cell_face_normal_direction[ic, j]) * (1. / self.mesh.cell_volumes[ic]) * self.flux[jf]
                     self.rhs[ic] = self.rhs[ic].round(config.tol)
