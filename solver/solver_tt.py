@@ -127,7 +127,6 @@ class Problem:
 def set_bc(gas_params, bc_type, bc_data, f, v, vn, vnp, vnm, tol):
     """Set boundary condition
     """
-    # TODO: create general function for symmetrical reflection of a tensor in one dimesnion
     if (bc_type == 'sym-x'): # symmetry in x
         return reflect_tt(f, 'x')
     elif (bc_type == 'sym-y'): # symmetry in y
@@ -296,7 +295,7 @@ class Solution:
             self.diag[ic] = tt.tensor(diag_tt_full)
 
         # set initial condition
-        self.f = [None] * self.mesh.nc # RENAME f!
+        self.f = [None] * mesh.nc # RENAME f!
 
         if (config.init_type == 'default'):
             for i in range(mesh.nc):
@@ -342,7 +341,7 @@ class Solution:
 
     def update_res(self):
 
-        resfile = open(self.config.res_filename, 'w+')
+        resfile = open(self.config.res_filename, 'a')
         resfile.write('%10.5E \n'% (self.frob_norm_iter[-1]))
         resfile.close()
 
@@ -424,7 +423,7 @@ class Solution:
             #
             # update values, expclicit scheme
             #
-            if (config.solver == 'expl'):
+            if (self.config.solver == 'expl'):
                 for ic in range(self.mesh.nc):
                     self.f[ic] = (self.f[ic] + self.tau * self.rhs[ic]).round(config.tol)
             #
@@ -433,7 +432,7 @@ class Solution:
             #
             # Backward sweep
             #
-            elif (config.solver == 'impl'):
+            elif (self.config.solver == 'impl'):
                 for ic in range(self.mesh.nc - 1, -1, -1):
                     self.df[ic] = self.rhs[ic].copy()
                 for ic in range(self.mesh.nc - 1, -1, -1):
@@ -488,7 +487,6 @@ class Solution:
                 #
                     # save rhs norm and tec tile
             if ((self.it % config.tec_save_step) == 0):
-
                 self.write_tec()
 
         save(config.filename, self.f, self.mesh.nc)

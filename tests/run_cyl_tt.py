@@ -10,6 +10,7 @@ import solver.solver_tt as Boltzmann
 import pickle
 
 log = open('log.txt', 'w') #log file (w+)
+log.close()
 
 # compute parameters for flow around cylinder
 
@@ -65,9 +66,9 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 CFL = 5e+1
 tol = 1e-3
 
-solver = 'expl'
+solver = 'impl'
 
-config = Boltzmann.Config(solver, CFL, tol, 'file-out.npy', res_filename = 'res.txt', tec_save_step = 20)
+config = Boltzmann.Config(solver, CFL, tol, 'file-out.npy', res_filename = 'res.txt', tec_save_step = 1)
 
 path = '../mesh/mesh-cyl/'
 mesh = Mesh()
@@ -82,7 +83,7 @@ mesh.read_starcd(path)
 # =============================================================================
 
 log = open('log.txt', 'a')
-log.write('Mach  = ' + str(Mach) + '\n')
+log.write('Mach = ' + str(Mach) + '\n')
 log.close()
 
 print 'Initialization...'
