@@ -14,7 +14,7 @@ class Mesh:
         max_vert_in_face = 4
         max_vert_in_cell = 8
         #
-        # Read vertex list and bc type for each boundary face 
+        # Read vertex list and bc type for each boundary face
         #
         data = np.loadtxt(path + 'star.bnd', usecols=(1,2,3,4,5))
         self.nbf = data.shape[0]
@@ -38,15 +38,15 @@ class Mesh:
             verts = np.array(list(map(int, l.split()[1:max_vert_in_cell+1])), dtype = np.int)
             # Check, is it "shell" cell?
             if(np.all(verts[4::] != 0)):
-                nc += 1 # else it is shell   
-        file.close() 
+                nc += 1 # else it is shell
+        file.close()
         self.nc = nc
         print 'Number of cells = ', self.nc
         # Count number of vertices
         file = open(path + 'star.vrt')
         for i, l in enumerate(file):
-            pass 
-        file.close() 
+            pass
+        file.close()
         self.nv = i + 1
         print 'Number of vertices = ', self.nv
 
@@ -85,7 +85,7 @@ class Mesh:
                 # Convert order to Gambit
                 verts = verts[[6, 7, 2, 3, 4, 5, 0, 1]]
                 self.vert_list_for_cell[j,:] = verts - 1 # since Python counts from 0
-                j += 1   
+                j += 1
         file.close()
         #
         # Calculate cell centers - arithmetic mean of vertises' coordinates
@@ -109,7 +109,7 @@ class Mesh:
             faces[:, 3] = verts[[2, 0, 4, 6]]
             faces[:, 4] = verts[[1, 0, 2, 3]]
             faces[:, 5] = verts[[4, 5, 7, 6]]
-            # Loop over faces, for each face construct 4 tetras 
+            # Loop over faces, for each face construct 4 tetras
             # and compute their volumes
             for jf in range(6):
                 face_center = np.sum(self.vert_coo[faces[:, jf], :], axis = 0)/4
@@ -120,7 +120,7 @@ class Mesh:
                 # 1st tetra
                 tetra[:, 0] = self.cell_center_coo[ic, :]
                 tetra[:, 1] = x1
-                tetra[:, 2] = x2 
+                tetra[:, 2] = x2
                 tetra[:, 3] = face_center
                 self.cell_volumes[ic] += self.compute_tetra_volume(tetra)
                 # 2nd tetra
@@ -153,7 +153,7 @@ class Mesh:
                 self.cell_num_for_vertex[vert] += 1
 
         #
-        # Construct for each cell list of neighboring cells 
+        # Construct for each cell list of neighboring cells
         #
         self.cell_neighbors_list = -np.ones((self.nc,6), dtype = np.int) # -1 means no neighbor
         faces_neigh = np.zeros((4,6), dtype = np.int)
@@ -177,7 +177,7 @@ class Mesh:
                 # loop over all vertices in face
                 for iv in range(4):
                     # loop over all cells containing this vertex
-                    for kc in range(self.cell_num_for_vertex[faces[iv, jf]]): 
+                    for kc in range(self.cell_num_for_vertex[faces[iv, jf]]):
                         icell = self.cell_list_for_vertex[faces[iv, jf], kc]
                         verts_neigh = self.vert_list_for_cell[icell, :]
                         # construct faces of cell
@@ -187,7 +187,7 @@ class Mesh:
                         faces_neigh[:, 3] = verts_neigh[[2, 0, 4, 6]]
                         faces_neigh[:, 4] = verts_neigh[[1, 0, 2, 3]]
                         faces_neigh[:, 5] = verts_neigh[[4, 5, 7, 6]]
-                        # Now compare these faces with fase 
+                        # Now compare these faces with fase
                         for lf in range(6):
                             if np.all(np.sort(faces[:, jf]) == np.sort(faces_neigh[:, lf])):
                                 self.cell_face_list[icell, lf] = nf
@@ -208,8 +208,8 @@ class Mesh:
             verts = self.face_vert_list[jf,:]
             verts_coo = self.vert_coo[verts, :]
             v5 = np.sum(verts_coo, axis = 0) # face center
-            
-            vec1 = 0.5*(verts_coo[2,:] + verts_coo[1,:]) - 0.5*(verts_coo[0,:] + verts_coo[3,:]) 
+
+            vec1 = 0.5*(verts_coo[2,:] + verts_coo[1,:]) - 0.5*(verts_coo[0,:] + verts_coo[3,:])
             vec2 = 0.5*(verts_coo[3,:] + verts_coo[2,:]) - 0.5*(verts_coo[1,:] + verts_coo[0,:])
             self.face_areas[jf] = np.linalg.norm(np.cross(vec1, vec2), 2)
             #
@@ -220,19 +220,19 @@ class Mesh:
             bec1 = vec1  / np.maximum(1e-13,len1)
             bec2 = vec2  / np.maximum(1e-13,len2)
             normal =  np.cross(bec1,bec2)
-            length = np.linalg.norm(normal, 2)        
-            if length <= 1e-10: 
+            length = np.linalg.norm(normal, 2)
+            if length <= 1e-10:
                 flag = False
-            else:    
+            else:
                 normal = normal/length
                 flag = True
             self.face_normals[jf,:] = normal
-        
+
         #
         # Compute orientation of face normals with respect to each cell
         #
         # +1 - outer normal, -1 - inner normal (directed in cell)
-        self.cell_face_normal_direction = np.zeros((self.nc, 6), dtype = np.int) 
+        self.cell_face_normal_direction = np.zeros((self.nc, 6), dtype = np.int)
         for ic in range(self.nc):
             for jf in range(6):
                 face = self.cell_face_list[ic, jf]
@@ -246,20 +246,20 @@ class Mesh:
                     self.cell_face_normal_direction[ic, jf] = +1
                 else:
                     self.cell_face_normal_direction[ic, jf] = -1
-                    
+
         self.bound_face_info = np.zeros((self.nbf, 3), dtype = np.int)
         for ibf in range(self.nbf):
             for jf in range(self.nf):
                 if (set(self.bcface_vert_lists[ibf, :]) == set(self.face_vert_list[jf, :])):
                     self.bound_face_info[ibf, 0] = jf
-            
+
             for ic in range(self.nc):
                 for jf in range(6):
                     if (self.cell_face_list[ic, jf] == self.bound_face_info[ibf, 0]):
                         self.bound_face_info[ibf, 2] = self.cell_face_normal_direction[ic, jf]
-                    
+
             self.bound_face_info[ibf, 1] = self.bcface_bctype[ibf]
-            
+
         self.cell_diam = np.zeros(self.nc)
         face_diam = np.zeros(6)
         for ic in range(self.nc):
@@ -270,7 +270,7 @@ class Mesh:
                 vec = face_center - self.cell_center_coo[ic, :]
                 face_diam[jf] = 2 * np.linalg.norm(vec)
             self.cell_diam[ic] = np.min(face_diam)
-            
+
 def write_tecplot(mesh, data, fname, var_names, time = 0.0):
     '''
     Procedure writes solution in cell centers of an unstructured mesh in Tecplot ASCII format
@@ -282,7 +282,7 @@ def write_tecplot(mesh, data, fname, var_names, time = 0.0):
     for iv in range(nv):
         file.write(' "' + var_names[iv] + '" ')
     file.write('\n')
-    file.write('ZONE T= my_zone, SolutionTime = ' + str(time) + 
+    file.write('ZONE T= my_zone, SolutionTime = ' + str(time) +
                ', DATAPACKING=Block, ZONETYPE=FEBRICK Nodes= ' + str(mesh.nv) +
               ' Elements= ' + str(mesh.nc))
     file.write(' VarLocation=([4-'+ str(3+nv) + ']=CellCentered)')

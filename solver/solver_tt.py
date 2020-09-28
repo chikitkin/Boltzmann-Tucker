@@ -1,7 +1,9 @@
+import sys
+sys.path.append('../')
 import numpy as np
 from matplotlib import pyplot as plt
 plt.switch_backend('agg')
-from read_starcd import write_tecplot
+from mesh.read_starcd import write_tecplot
 import tt
 
 def f_maxwell(v, n, ux, uy, uz, T, Rg):
@@ -227,7 +229,9 @@ def load(filename, L, n0, n1, n2):
 
 class Config:
 
-    def __init__(self, CFL, tol, filename, init_type = 'default', init_filename = None, res_filename = None, tec_save_step = 1e+5):
+    def __init__(self, solver, CFL, tol, filename, init_type = 'default', init_filename = None, res_filename = None, tec_save_step = 1e+5):
+
+        self.solver = solver
 
         self.CFL = CFL
         self.tol = tol
@@ -309,7 +313,6 @@ class Solution:
             for ic in range(mesh.nc):
                 self.f[ic] = f_maxwell_tt(v, init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], init_data[ic, 5], gas_params.Rg)
 
-        # TODO: may be join f_plus and f_minus in one array
         self.f_plus = [None] * mesh.nf # Reconstructed values on the right
         self.f_minus = [None] * mesh.nf # reconstructed values on the left
         self.flux = [None] * mesh.nf # Flux values
@@ -330,9 +333,16 @@ class Solution:
 
         self.frob_norm_iter = np.array([])
 
-    def update_res(self, res_filename):
+        self.create_res()
 
-        resfile = open(res_filename, 'a+')
+    def create_res(self):
+
+        resfile = open(self.config.res_filename, 'w')
+        resfile.close()
+
+    def update_res(self):
+
+        resfile = open(self.config.res_filename, 'w+')
         resfile.write('%10.5E \n'% (self.frob_norm_iter[-1]))
         resfile.close()
 
@@ -410,70 +420,72 @@ class Solution:
 
             self.frob_norm_iter = np.append(self.frob_norm_iter, np.sqrt(sum([(self.rhs[ic].norm())**2 for ic in range(self.mesh.nc)])))
 
-            self.update_res('res.txt')
+            self.update_res()
             #
             # update values, expclicit scheme
             #
-    #        for ic in range(mesh.nc):
-    #            f[ic] = (f[ic] + tau * rhs[ic]).round(tol)
-            '''
-            LU-SGS iteration
-            '''
+            if (config.solver == 'expl'):
+                for ic in range(self.mesh.nc):
+                    self.f[ic] = (self.f[ic] + self.tau * self.rhs[ic]).round(config.tol)
+            #
+            # LU-SGS iteration
+            #
             #
             # Backward sweep
             #
-            for ic in range(self.mesh.nc - 1, -1, -1):
-                self.df[ic] = self.rhs[ic].copy()
-            for ic in range(self.mesh.nc - 1, -1, -1):
-                # loop over neighbors of cell ic
-                for j in range(6):
-                    jf = self.mesh.cell_face_list[ic, j]
-                    icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
-                    if self.mesh.cell_face_normal_direction[ic, j] == 1:
-                        vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
-                    else:
-                        vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
-                    if (icn >= 0 ) and (icn > ic):
-    #                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
-    #                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn])
-                        self.df[ic] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
-                        * vnm_loc * self.df[icn]
-                        self.df[ic] = self.df[ic].round(config.tol)
-                # divide by diagonal coefficient
-                diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
-                self.df[ic] = div_tt(self.df[ic], diag_temp)
-            #
-            # Forward sweep
-            #
-            for ic in range(self.mesh.nc):
-                # loop over neighbors of cell ic
-                incr = self.v.zero.copy()
-                for j in range(6):
-                    jf = self.mesh.cell_face_list[ic, j]
-                    icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
-                    if self.mesh.cell_face_normal_direction[ic, j] == 1:
-                        vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
-                    else:
-                        vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
-                    if (icn >= 0 ) and (icn < ic):
-    #                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
-    #                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn]
-                        incr+= -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
-                        * vnm_loc * self.df[icn]
-                        incr = incr.round(config.tol)
-                # divide by diagonal coefficient
-                diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
-                self.df[ic] += div_tt(incr, diag_temp)
-                self.df[ic] = self.df[ic].round(config.tol)
-            #
-            # Update values
-            #
-            for ic in range(self.mesh.nc):
-                self.f[ic] += self.df[ic]
-                self.f[ic] = self.f[ic].round(config.tol)
-            '''
-            end of LU-SGS iteration
-            '''
+            elif (config.solver == 'impl'):
+                for ic in range(self.mesh.nc - 1, -1, -1):
+                    self.df[ic] = self.rhs[ic].copy()
+                for ic in range(self.mesh.nc - 1, -1, -1):
+                    # loop over neighbors of cell ic
+                    for j in range(6):
+                        jf = self.mesh.cell_face_list[ic, j]
+                        icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
+                        if self.mesh.cell_face_normal_direction[ic, j] == 1:
+                            vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
+                        else:
+                            vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
+                        if (icn >= 0 ) and (icn > ic):
+        #                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
+        #                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn])
+                            self.df[ic] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
+                            * vnm_loc * self.df[icn]
+                            self.df[ic] = self.df[ic].round(config.tol)
+                    # divide by diagonal coefficient
+                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+                    self.df[ic] = div_tt(self.df[ic], diag_temp)
+                #
+                # Forward sweep
+                #
+                for ic in range(self.mesh.nc):
+                    # loop over neighbors of cell ic
+                    incr = self.v.zero.copy()
+                    for j in range(6):
+                        jf = self.mesh.cell_face_list[ic, j]
+                        icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
+                        if self.mesh.cell_face_normal_direction[ic, j] == 1:
+                            vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
+                        else:
+                            vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
+                        if (icn >= 0 ) and (icn < ic):
+        #                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
+        #                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn]
+                            incr+= -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
+                            * vnm_loc * self.df[icn]
+                            incr = incr.round(config.tol)
+                    # divide by diagonal coefficient
+                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+                    self.df[ic] += div_tt(incr, diag_temp)
+                    self.df[ic] = self.df[ic].round(config.tol)
+                #
+                # Update values
+                #
+                for ic in range(self.mesh.nc):
+                    self.f[ic] += self.df[ic]
+                    self.f[ic] = self.f[ic].round(config.tol)
+                #
+                # end of LU-SGS iteration
+                #
                     # save rhs norm and tec tile
             if ((self.it % config.tec_save_step) == 0):
 

@@ -1,16 +1,15 @@
+import sys
+sys.path.append('../')
 import numpy as np
-from matplotlib import pyplot as plt
-import matplotlib.cm as cm
 import time
 import tt
 
-from read_starcd import Mesh
-from read_starcd import write_tecplot
+from mesh.read_starcd import Mesh
 
-import solver_tt as Boltzmann
+import solver.solver_tt as Boltzmann
 import pickle
 
-log = open('log.txt', 'w+') #log file
+log = open('log.txt', 'w') #log file (w+)
 
 # compute parameters for flow around cylinder
 
@@ -66,25 +65,33 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 CFL = 5e+1
 tol = 1e-3
 
-config = Boltzmann.Config(CFL, tol, 'file-out.npy', res_filename = 'res.txt', tec_save_step = 20)
+solver = 'expl'
 
-f = open('./mesh-cyl/mesh-cyl.pickle', 'rb')
+config = Boltzmann.Config(solver, CFL, tol, 'file-out.npy', res_filename = 'res.txt', tec_save_step = 20)
 
-mesh = pickle.load(file = f)
+path = '../mesh/mesh-cyl/'
+mesh = Mesh()
+mesh.read_starcd(path)
 
-f.close()
+# =============================================================================
+# f = open('../mesh/mesh-cyl/mesh-cyl.pickle', 'rb')
+#
+# mesh = pickle.load(file = f)
+#
+# f.close()
+# =============================================================================
 
 log = open('log.txt', 'a')
 log.write('Mach  = ' + str(Mach) + '\n')
 log.close()
 
 print 'Initialization...'
-t1 = time.time()
+t1 = time.clock()
 S = Boltzmann.Solution(gas_params, problem, mesh, v, config)
-t2 = time.time()
+t2 = time.clock()
 print 'Complete! Took', str(t2 - t1), 'seconds'
 
-nt = 2000
+nt = 30
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()
