@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 plt.switch_backend('agg')
 from mesh.read_starcd import write_tecplot
-import tt
+import tucker.tucker as tuck
 import os
 from datetime import datetime
 
@@ -20,53 +20,11 @@ def f_maxwell(v, n, ux, uy, uz, T, Rg):
     """
     return n * ((1. / (2. * np.pi * Rg * T)) ** (3. / 2.)) * (np.exp(-((v.vx - ux)**2 + (v.vy - uy)**2 + (v.vz - uz)**2) / (2. * Rg * T)))
 
-def tt_from_factors(u0, u1, u2):
-
-    F = tt.rand([np.size(u0), np.size(u1), np.size(u2)], 3, [1, 1, 1, 1])
-    F_list = F.to_list(F)
-    F_list[0][0, :, 0] = u0
-    F_list[1][0, :, 0] = u1
-    F_list[2][0, :, 0] = u2
-    F = F.from_list(F_list)
-
-    return F
-
 def f_maxwell_tt(v, n, ux, uy, uz, T, Rg):
 
-    return n * ((1. / (2. * np.pi * Rg * T)) ** (3. / 2.)) * tt_from_factors(np.exp(-((v.vx_ - ux) ** 2) / (2. * Rg * T)),
+    return n * ((1. / (2. * np.pi * Rg * T)) ** (3. / 2.)) * tuck.tuck_from_factors(np.exp(-((v.vx_ - ux) ** 2) / (2. * Rg * T)),
                                                                              np.exp(-((v.vy_ - uy) ** 2) / (2. * Rg * T)),
                                                                              np.exp(-((v.vz_ - uz) ** 2) / (2. * Rg * T)))
-
-def div_tt(a, b):
-
-    a_list = a.to_list(a)
-    b_list = a.to_list(b)
-
-    c = tt.rand(a.n, 3, a.r)
-
-    c_list = c.to_list(c)
-
-    c_list[0] = a_list[0] / b_list[0]
-    c_list[1] = a_list[1] / b_list[1]
-    c_list[2] = a_list[2] / b_list[2]
-
-    c = c.from_list(c_list)
-
-    return c
-
-def reflect_tt(a, ax):
-    if (ax == 'x'):
-        l = a.to_list(a)
-        l[0] = l[0][:,::-1,:]
-        return a.from_list(l)
-    elif (ax == 'y'):
-        l = a.to_list(a)
-        l[1] = l[1][:,::-1,:]
-        return a.from_list(l)
-    elif (ax == 'z'):
-        l = a.to_list(a)
-        l[2] = l[2][:,::-1,:]
-        return a.from_list(l)
 
 class VelocityGrid:
     def __init__(self, vx_, vy_, vz_):
@@ -85,14 +43,14 @@ class VelocityGrid:
 
         self.vx, self.vy, self.vz = np.meshgrid(vx_, vy_, vz_, indexing='ij')
 
-        self.vx_tt = tt_from_factors(vx_, np.ones(self.nvy), np.ones(self.nvz))
-        self.vy_tt = tt_from_factors(np.ones(self.nvx), vy_, np.ones(self.nvz))
-        self.vz_tt = tt_from_factors(np.ones(self.nvx), np.ones(self.nvy), vz_)
+        self.vx_tt = tuck.tuck_from_factors(vx_, np.ones(self.nvy), np.ones(self.nvz))
+        self.vy_tt = tuck.tuck_from_factors(np.ones(self.nvx), vy_, np.ones(self.nvz))
+        self.vz_tt = tuck.tuck_from_factors(np.ones(self.nvx), np.ones(self.nvy), vz_)
 
-        self.v2 = (self.vx_tt*self.vx_tt + self.vy_tt*self.vy_tt + self.vz_tt*self.vz_tt).round(1e-7, rmax = 2)
+        self.v2 = (self.vx_tt*self.vx_tt + self.vy_tt*self.vy_tt + self.vz_tt*self.vz_tt).round(1e-7) # TODO rmax
 
-        self.zero = 0. * tt.ones((self.nvx, self.nvy, self.nvz))
-        self.ones = tt.ones((self.nvx, self.nvy, self.nvz))
+        self.zero = tuck.zeros((self.nvx, self.nvy, self.nvz))
+        self.ones = tuck.ones((self.nvx, self.nvy, self.nvz))
 
 class GasParams:
     Na = 6.02214129e+23 # Avogadro constant
@@ -130,11 +88,11 @@ def set_bc(gas_params, bc_type, bc_data, f, v, vn, vnp, vnm, tol):
     """Set boundary condition
     """
     if (bc_type == 'sym-x'): # symmetry in x
-        return reflect_tt(f, 'x')
+        return tuck.reflect_tuck(f, 'x')
     elif (bc_type == 'sym-y'): # symmetry in y
-        return reflect_tt(f, 'y')
+        return tuck.reflect_tuck(f, 'y')
     elif (bc_type == 'sym-z'): # symmetry in z
-        return reflect_tt(f, 'z')
+        return tuck.reflect_tuck(f, 'z')
     elif (bc_type == 'sym'): # zero derivative
         return f.copy()
     elif (bc_type == 'in'): # inlet
@@ -146,8 +104,8 @@ def set_bc(gas_params, bc_type, bc_data, f, v, vn, vnp, vnm, tol):
     elif (bc_type == 'wall'): # wall
         # unpack bc_data
         fmax = bc_data[0]
-        Ni = v.hv3 * tt.sum((f * vnp).round(tol))
-        Nr = v.hv3 * tt.sum((fmax * vnm).round(tol))
+        Ni = v.hv3 * tuck.sum((f * vnp).round(tol))
+        Nr = v.hv3 * tuck.sum((fmax * vnm).round(tol))
         n_wall = - Ni/ Nr
         return n_wall * fmax
 
@@ -156,17 +114,17 @@ def comp_macro_params(f, v, gas_params):
     # takes precomputed "ones_tt" tensor
     # "ranks" array for mean ranks
     # much less rounding
-    n = v.hv3 * tt.sum(f)
+    n = v.hv3 * tuck.sum(f)
     if n <= 0.:
         n = 1e+10
 
-    ux = (1. / n) * v.hv3 * tt.sum(v.vx_tt * f)
-    uy = (1. / n) * v.hv3 * tt.sum(v.vy_tt * f)
-    uz = (1. / n) * v.hv3 * tt.sum(v.vz_tt * f)
+    ux = (1. / n) * v.hv3 * tuck.sum(v.vx_tt * f)
+    uy = (1. / n) * v.hv3 * tuck.sum(v.vy_tt * f)
+    uz = (1. / n) * v.hv3 * tuck.sum(v.vz_tt * f)
 
     u2 = ux*ux + uy*uy + uz*uz
 
-    T = (1. / (3. * n * gas_params.Rg)) * (v.hv3 * tt.sum((v.v2 * f)) - n * u2)
+    T = (1. / (3. * n * gas_params.Rg)) * (v.hv3 * tuck.sum((v.v2 * f)) - n * u2)
     if T <= 0.:
         T = 1.
 
@@ -181,15 +139,15 @@ def comp_j(f, v, gas_params):
 
     n, ux, uy, uz, T, rho, p, nu = comp_macro_params(f, v, gas_params)
 
-    cx = tt_from_factors((1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vx_ - ux), np.ones(v.nvy), np.ones(v.nvz))
-    cy = tt_from_factors(np.ones(v.nvx), (1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vy_ - uy), np.ones(v.nvz))
-    cz = tt_from_factors(np.ones(v.nvx), np.ones(v.nvy), (1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vz_ - uz))
+    cx = tuck.tuck_from_factors((1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vx_ - ux), np.ones(v.nvy), np.ones(v.nvz))
+    cy = tuck.tuck_from_factors(np.ones(v.nvx), (1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vy_ - uy), np.ones(v.nvz))
+    cz = tuck.tuck_from_factors(np.ones(v.nvx), np.ones(v.nvy), (1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vz_ - uz))
 
     c2 = ((cx*cx) + (cy*cy) + (cz*cz)).round(1e-7) #, rmax = 2)
 
-    Sx = (1. / n) * v.hv3 * tt.sum(cx * c2 * f)
-    Sy = (1. / n) * v.hv3 * tt.sum(cy * c2 * f)
-    Sz = (1. / n) * v.hv3 * tt.sum(cz * c2 * f)
+    Sx = (1. / n) * v.hv3 * tuck.sum(cx * c2 * f)
+    Sy = (1. / n) * v.hv3 * tuck.sum(cy * c2 * f)
+    Sz = (1. / n) * v.hv3 * tuck.sum(cz * c2 * f)
 
     fmax = f_maxwell_tt(v, n, ux, uy, uz, T, gas_params.Rg)
 
@@ -239,36 +197,38 @@ class Solution:
         for jf in range(mesh.nf):
             self.vn_tmp = mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy + mesh.face_normals[jf, 2] * v.vz
             self.vn[jf] = mesh.face_normals[jf, 0] * v.vx_tt + mesh.face_normals[jf, 1] * v.vy_tt + mesh.face_normals[jf, 2] * v.vz_tt
-            self.vnp[jf] = tt.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
-            self.vnm[jf] = tt.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
-            self.vn_abs[jf] = tt.tensor(np.abs(self.vn_tmp), rmax = 4)
+            self.vnp[jf] = tuck.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
+            self.vnm[jf] = tuck.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
+            self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp), eps = 1e-1) # TODO rmax
 
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))
-
-        self.diag = [None] * mesh.nc # part of diagonal coefficient in implicit scheme
-        self.diag_r1 = [None] * mesh.nc
-        # precompute diag
-        # simple approximation for v_abs
-        self.vn_abs_r1 = tt.tensor((v.vx**2 + v.vy**2 + v.vz**2)**0.5, rmax = 1)
-        for ic in range(mesh.nc):
-            diag_temp = np.zeros((v.nvx, v.nvy, v.nvz))
-            diag_sc = 0.
-            for j in range(6):
-                jf = mesh.cell_face_list[ic, j]
-                vn_full = (mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy \
-                           + mesh.face_normals[jf, 2] * v.vz) * mesh.cell_face_normal_direction[ic, j]
-                vnp_full = np.where(vn_full > 0, vn_full, 0.)
-                vn_abs_full = np.abs(vn_full)
-                diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
-                diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic])
-            self.diag_r1[ic] = diag_sc * self.vn_abs_r1
-            diag_tt_full = tt.tensor(diag_temp, 1e-7, rmax = 1).full()
-            if (np.amax(diag_temp - diag_tt_full) > 0.):
-                ind_max = np.unravel_index(np.argmax(diag_temp - diag_tt_full), diag_temp.shape)
-                diag_tt_full = (diag_temp[ind_max] / diag_tt_full[ind_max]) * diag_tt_full
-            self.diag[ic] = tt.tensor(diag_tt_full)
-
+# =============================================================================
+#
+#         self.diag = [None] * mesh.nc # part of diagonal coefficient in implicit scheme
+#         self.diag_r1 = [None] * mesh.nc
+#         # precompute diag
+#         # simple approximation for v_abs
+#         self.vn_abs_r1 = tuck.tensor((v.vx**2 + v.vy**2 + v.vz**2)**0.5, rmax = 1) # TODO rmax
+#         for ic in range(mesh.nc):
+#             diag_temp = np.zeros((v.nvx, v.nvy, v.nvz))
+#             diag_sc = 0.
+#             for j in range(6):
+#                 jf = mesh.cell_face_list[ic, j]
+#                 vn_full = (mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy \
+#                            + mesh.face_normals[jf, 2] * v.vz) * mesh.cell_face_normal_direction[ic, j]
+#                 vnp_full = np.where(vn_full > 0, vn_full, 0.)
+#                 vn_abs_full = np.abs(vn_full)
+#                 diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
+#                 diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic])
+#             self.diag_r1[ic] = diag_sc * self.vn_abs_r1
+#             diag_tt_full = tt.tensor(diag_temp, 1e-7, rmax = 1).full()
+#             if (np.amax(diag_temp - diag_tt_full) > 0.):
+#                 ind_max = np.unravel_index(np.argmax(diag_temp - diag_tt_full), diag_temp.shape)
+#                 diag_tt_full = (diag_temp[ind_max] / diag_tt_full[ind_max]) * diag_tt_full
+#             self.diag[ic] = tt.tensor(diag_tt_full)
+#
+# =============================================================================
         # set initial condition
         self.f = [None] * mesh.nc # RENAME f!
 
@@ -342,34 +302,36 @@ class Solution:
 
         np.savetxt(self.path + 'macro.txt', self.data)
 
-    def save_restart(self):
-        """ Save the solution into a file
-        """
-
-        m = max(self.f[i].core.size for i in range(self.mesh.nc))
-
-        F = np.zeros((m+4, self.mesh.nc))
-
-        for i in range(self.mesh.nc):
-            F[:4, i] = self.f[i].r.ravel()
-            F[4:self.f[i].core.size+4, i] = self.f[i].core.ravel()
-
-        np.save(self.path + 'restart.npy', F)#, fmt='%s')
-
-    def load_restart(self):
-        """ Load the solution from a file
-        """
-
-        F = np.load(self.config.init_filename)
-
-        f = list()
-
-        for i in range(self.mesh.nc):
-
-            f.append(tt.rand([self.v.nvx, self.v.nvy, self.v.nvz], 3, F[:4, i]))
-            f[i].core = F[4:f[i].core.size+4, i]
-
-        return f
+# =============================================================================
+#     def save_restart(self):
+#         """ Save the solution into a file
+#         """
+#
+#         m = max(self.f[i].core.size for i in range(self.mesh.nc))
+#
+#         F = np.zeros((m+4, self.mesh.nc))
+#
+#         for i in range(self.mesh.nc):
+#             F[:4, i] = self.f[i].r.ravel()
+#             F[4:self.f[i].core.size+4, i] = self.f[i].core.ravel()
+#
+#         np.save(self.path + 'restart.npy', F)#, fmt='%s')
+#
+#     def load_restart(self):
+#         """ Load the solution from a file
+#         """
+#
+#         F = np.load(self.config.init_filename)
+#
+#         f = list()
+#
+#         for i in range(self.mesh.nc):
+#
+#             f.append(tt.rand([self.v.nvx, self.v.nvy, self.v.nvz], 3, F[:4, i]))
+#             f[i].core = F[4:f[i].core.size+4, i]
+#
+#         return f
+# =============================================================================
 
     def make_time_steps(self, config, nt):
 
@@ -430,68 +392,70 @@ class Solution:
             if (self.config.solver == 'expl'):
                 for ic in range(self.mesh.nc):
                     self.f[ic] = (self.f[ic] + self.tau * self.rhs[ic]).round(config.tol)
-            #
-            # LU-SGS iteration
-            #
-            #
-            # Backward sweep
-            #
-            elif (self.config.solver == 'impl'):
-                for ic in range(self.mesh.nc - 1, -1, -1):
-                    self.df[ic] = self.rhs[ic].copy()
-                for ic in range(self.mesh.nc - 1, -1, -1):
-                    # loop over neighbors of cell ic
-                    for j in range(6):
-                        jf = self.mesh.cell_face_list[ic, j]
-                        icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
-                        if self.mesh.cell_face_normal_direction[ic, j] == 1:
-                            vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
-                        else:
-                            vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
-                        if (icn >= 0 ) and (icn > ic):
-        #                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
-        #                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn])
-                            self.df[ic] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
-                            * vnm_loc * self.df[icn]
-                            self.df[ic] = self.df[ic].round(config.tol)
-                    # divide by diagonal coefficient
-                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
-                    self.df[ic] = div_tt(self.df[ic], diag_temp)
-                #
-                # Forward sweep
-                #
-                for ic in range(self.mesh.nc):
-                    # loop over neighbors of cell ic
-                    incr = self.v.zero.copy()
-                    for j in range(6):
-                        jf = self.mesh.cell_face_list[ic, j]
-                        icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
-                        if self.mesh.cell_face_normal_direction[ic, j] == 1:
-                            vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
-                        else:
-                            vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
-                        if (icn >= 0 ) and (icn < ic):
-        #                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
-        #                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn]
-                            incr+= -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
-                            * vnm_loc * self.df[icn]
-                            incr = incr.round(config.tol)
-                    # divide by diagonal coefficient
-                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
-                    self.df[ic] += div_tt(incr, diag_temp)
-                    self.df[ic] = self.df[ic].round(config.tol)
-                #
-                # Update values
-                #
-                for ic in range(self.mesh.nc):
-                    self.f[ic] += self.df[ic]
-                    self.f[ic] = self.f[ic].round(config.tol)
-                #
-                # end of LU-SGS iteration
-                #
+# =============================================================================
+#             #
+#             # LU-SGS iteration
+#             #
+#             #
+#             # Backward sweep
+#             #
+#             elif (self.config.solver == 'impl'):
+#                 for ic in range(self.mesh.nc - 1, -1, -1):
+#                     self.df[ic] = self.rhs[ic].copy()
+#                 for ic in range(self.mesh.nc - 1, -1, -1):
+#                     # loop over neighbors of cell ic
+#                     for j in range(6):
+#                         jf = self.mesh.cell_face_list[ic, j]
+#                         icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
+#                         if self.mesh.cell_face_normal_direction[ic, j] == 1:
+#                             vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
+#                         else:
+#                             vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
+#                         if (icn >= 0 ) and (icn > ic):
+#         #                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
+#         #                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn])
+#                             self.df[ic] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
+#                             * vnm_loc * self.df[icn]
+#                             self.df[ic] = self.df[ic].round(config.tol)
+#                     # divide by diagonal coefficient
+#                     diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+#                     self.df[ic] = div_tt(self.df[ic], diag_temp)
+#                 #
+#                 # Forward sweep
+#                 #
+#                 for ic in range(self.mesh.nc):
+#                     # loop over neighbors of cell ic
+#                     incr = self.v.zero.copy()
+#                     for j in range(6):
+#                         jf = self.mesh.cell_face_list[ic, j]
+#                         icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
+#                         if self.mesh.cell_face_normal_direction[ic, j] == 1:
+#                             vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
+#                         else:
+#                             vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
+#                         if (icn >= 0 ) and (icn < ic):
+#         #                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
+#         #                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn]
+#                             incr+= -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
+#                             * vnm_loc * self.df[icn]
+#                             incr = incr.round(config.tol)
+#                     # divide by diagonal coefficient
+#                     diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+#                     self.df[ic] += div_tt(incr, diag_temp)
+#                     self.df[ic] = self.df[ic].round(config.tol)
+#                 #
+#                 # Update values
+#                 #
+#                 for ic in range(self.mesh.nc):
+#                     self.f[ic] += self.df[ic]
+#                     self.f[ic] = self.f[ic].round(config.tol)
+#                 #
+#                 # end of LU-SGS iteration
+#                 #
+# =============================================================================
             # save rhs norm and tec tile
             if ((self.it % config.tec_save_step) == 0):
                 self.write_tec()
 
-        self.save_restart()
-        self.write_tec()
+#        self.save_restart()
+#        self.write_tec()

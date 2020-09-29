@@ -2,11 +2,11 @@ import sys
 sys.path.append('../')
 import numpy as np
 import time
-import tt
+import tucker.tucker as tuck
 
 from mesh.read_starcd import Mesh
 
-import solver.solver_tt as Boltzmann
+import solver.solver_tucker as Boltzmann
 import pickle
 
 log = open('log.txt', 'w') #log file (w+)
@@ -48,10 +48,10 @@ vx_ = np.linspace(-vmax+hv/2, vmax-hv/2, nv) # coordinates of velocity nodes
 
 v = Boltzmann.VelocityGrid(vx_, vx_, vx_)
 
-f_init = lambda x, y, z, v: Boltzmann.f_maxwell_tt(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
-f_bound = Boltzmann.f_maxwell_tt(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
+f_init = lambda x, y, z, v: Boltzmann.f_maxwell_tuck(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
+f_bound = Boltzmann.f_maxwell_tuck(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
 #print(f_bound)
-fmax = Boltzmann.f_maxwell_tt(v, 1., 0., 0., 0., T_w, gas_params.Rg)
+fmax = Boltzmann.f_maxwell_tuck(v, 1., 0., 0., 0., T_w, gas_params.Rg)
 #print(fmax)
 problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y'],
                                 bc_data = [[],

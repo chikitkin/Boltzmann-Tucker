@@ -4,6 +4,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 plt.switch_backend('agg')
 from mesh.read_starcd import write_tecplot
+import os
+from datetime import datetime
 
 def f_maxwell(v, n, ux, uy, uz, T, Rg):
     """Compute maxwell distribution function on cartesian velocity mesh
@@ -171,6 +173,9 @@ class Solution:
         self.v = v
         self.config = config
 
+        self.path = './' + config.solver + '.' + datetime.now().strftime("%m_%d_%Y_%H_%M_%S") + '/'
+        os.mkdir(self.path)
+
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))
 
@@ -184,7 +189,7 @@ class Solution:
                 self.f[i] = problem.f_init(x, y, z, v)
         elif (config.init_type == 'restart'):
             # restart from distribution function
-            self.f = np.reshape(np.load(config.init_filename), (mesh.nc, v.nvx, v.nvy, v.nvz))
+            self.f = self.load_restart()
         elif (config.init_type == 'macro_restart'):
             # restart form macroparameters array
             init_data = np.loadtxt(config.init_filename)
@@ -226,12 +231,12 @@ class Solution:
 
     def create_res(self):
 
-        resfile = open(self.config.res_filename, 'w')
+        resfile = open(self.path + self.config.res_filename, 'w')
         resfile.close()
 
     def update_res(self):
 
-        resfile = open(self.config.res_filename, 'a')
+        resfile = open(self.path + self.config.res_filename, 'a')
         resfile.write('%10.5E \n'% (self.frob_norm_iter[-1]))
         resfile.close()
 
@@ -240,7 +245,7 @@ class Solution:
         fig, ax = plt.subplots(figsize = (20,10))
         line, = ax.semilogy(self.frob_norm_iter/self.frob_norm_iter[0])
         ax.set(title='$Steps =$' + str(self.it))
-        plt.savefig('norm_iter.png')
+        plt.savefig(self.path + 'norm_iter.png')
         plt.close()
 
         self.data[:, 0] = self.n[:]
@@ -250,11 +255,21 @@ class Solution:
         self.data[:, 4] = self.p[:]
         self.data[:, 5] = self.T[:]
 
-        write_tecplot(self.mesh, self.data, 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T'))
+        write_tecplot(self.mesh, self.data, self.path + 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T'))
 
-    def save_macro(self, filename):
+    def save_macro(self):
 
-        np.savetxt(filename, self.data)
+        np.savetxt(self.path + 'macro.txt', self.data)
+
+    def save_restart(self):
+        """ Save the solution into a file
+        """
+        np.save(self.path + 'restart.npy', self.f)#, fmt='%s')
+
+    def load_restart(self):
+        """ Load the solution from a file
+        """
+        return np.reshape(np.load(self.config.init_filename), (self.mesh.nc, self.v.nvx, self.v.nvy, self.v.nvz))
 
     def make_time_steps(self, config, nt):
 
@@ -356,5 +371,5 @@ class Solution:
             if ((self.it % config.tec_save_step) == 0):
                 self.write_tec()
 
-        np.save(config.filename, self.f)
+        self.save_restart()
         self.write_tec()

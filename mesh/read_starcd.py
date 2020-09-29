@@ -248,13 +248,11 @@ class Mesh:
                     self.cell_face_normal_direction[ic, jf] = -1
 
         self.bound_face_info = np.zeros((self.nbf, 3), dtype = np.int)
-
-        bcface_vert_lists_sorted = np.sort(self.bcface_vert_lists, 1)
-        face_vert_list_sorted = np.sort(self.face_vert_list, 1)
         for ibf in range(self.nbf):
             for jf in range(self.nf):
-                if np.array_equal(bcface_vert_lists_sorted[ibf, :], face_vert_list_sorted[jf, :]):
+                if (set(self.bcface_vert_lists[ibf, :]) == set(self.face_vert_list[jf, :])):
                     self.bound_face_info[ibf, 0] = jf
+                    break
 
             for ic in range(self.nc):
                 for jf in range(6):

@@ -5,11 +5,15 @@ Created on Mon Sep 28 17:42:09 2020
 
 @author: egor
 """
+import sys
+sys.path.append('../')
+import numpy as np
+import time
+from datetime import datetime
+import os
+import tucker.tucker as tuck
 
 # =============================================================================
-# import numpy as np
-# import time
-#
 # from read_starcd import Mesh
 # from read_starcd_old import Mesh as Mesh_old
 #
@@ -29,8 +33,22 @@ Created on Mon Sep 28 17:42:09 2020
 # t2 = time.clock()
 #
 # print 'Было', str(t2 - t1)
-#
 # =============================================================================
 
-resfile = open('test.txt', 'w')
-resfile.close()
+
+#resfile = open('test.txt', 'w')
+#resfile.close()
+
+#path = './' + 'impl' + '_' + datetime.now().strftime("%m_%d_%Y_%H_%M_%S") + '/'
+#os.mkdir(path)
+#
+#resfile = open(path + '123.txt', 'w')
+#resfile.close()
+
+a = np.ones((4, 3))
+
+#a_tuck = tuck.tensor(a)
+
+#print(a_tuck.u[0].shape)
+
+np.dot(np.ones(4), a)
