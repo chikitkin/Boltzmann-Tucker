@@ -20,7 +20,7 @@ def f_maxwell(v, n, ux, uy, uz, T, Rg):
     """
     return n * ((1. / (2. * np.pi * Rg * T)) ** (3. / 2.)) * (np.exp(-((v.vx - ux)**2 + (v.vy - uy)**2 + (v.vz - uz)**2) / (2. * Rg * T)))
 
-def f_maxwell_tt(v, n, ux, uy, uz, T, Rg):
+def f_maxwell_tuck(v, n, ux, uy, uz, T, Rg):
 
     return n * ((1. / (2. * np.pi * Rg * T)) ** (3. / 2.)) * tuck.tuck_from_factors(np.exp(-((v.vx_ - ux) ** 2) / (2. * Rg * T)),
                                                                              np.exp(-((v.vy_ - uy) ** 2) / (2. * Rg * T)),
@@ -149,7 +149,7 @@ def comp_j(f, v, gas_params):
     Sy = (1. / n) * v.hv3 * tuck.sum(cy * c2 * f)
     Sz = (1. / n) * v.hv3 * tuck.sum(cz * c2 * f)
 
-    fmax = f_maxwell_tt(v, n, ux, uy, uz, T, gas_params.Rg)
+    fmax = f_maxwell_tuck(v, n, ux, uy, uz, T, gas_params.Rg)
 
     f_plus = fmax * (v.ones + ((4. / 5.) * (1. - gas_params.Pr) * (cx*Sx + cy*Sy + cz*Sz) * ((c2 - (5. / 2.) * v.ones))))
     J = nu * (f_plus - f)
@@ -245,7 +245,7 @@ class Solution:
             # restart form macroparameters array
             init_data = np.loadtxt(config.init_filename)
             for ic in range(mesh.nc):
-                self.f[ic] = f_maxwell_tt(v, init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], init_data[ic, 5], gas_params.Rg)
+                self.f[ic] = f_maxwell_tuck(v, init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], init_data[ic, 5], gas_params.Rg)
 
         self.f_plus = [None] * mesh.nf # Reconstructed values on the right
         self.f_minus = [None] * mesh.nf # reconstructed values on the left

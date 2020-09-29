@@ -45,10 +45,12 @@ import tucker.tucker as tuck
 #resfile = open(path + '123.txt', 'w')
 #resfile.close()
 
-a = np.ones((4, 3))
+#a = np.ones((4, 3))
 
 #a_tuck = tuck.tensor(a)
 
 #print(a_tuck.u[0].shape)
 
-np.dot(np.ones(4), a)
+#np.dot(np.ones(4), a)
+
+print np.atleast_2d(np.ones(15)).T.shape

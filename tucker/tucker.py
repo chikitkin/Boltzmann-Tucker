@@ -140,7 +140,7 @@ def sum(a):
 
     tmp = tensor()
 
-    tmp.core = 1.
+    tmp.core = np.atleast_3d(1.) # TODO
 
     tmp.n = [1, 1, 1]
     tmp.r = a.r
@@ -153,17 +153,17 @@ def sum(a):
 
     return S
 
-def tuck_from_factors(u0, u1, u2):
+def tuck_from_factors(u0, u1, u2): # only for rank 1
 
     F = tensor()
 
     F.n = [np.size(u0), np.size(u1), np.size(u2)]
     F.r = [1, 1, 1]
-    F.core = 1.
+    F.core = np.atleast_3d(1.) # TODO
 
-    F.u[0] = u0
-    F.u[1] = u1
-    F.u[2] = u2
+    F.u[0] = np.atleast_2d(u0).T
+    F.u[1] = np.atleast_2d(u1).T
+    F.u[2] = np.atleast_2d(u2).T
 
     return F
 
