@@ -12,6 +12,7 @@ import time
 from datetime import datetime
 import os
 import tucker.tucker as tuck
+import solver.solver_tucker as Boltzmann
 
 # =============================================================================
 # from read_starcd import Mesh
@@ -53,4 +54,38 @@ import tucker.tucker as tuck
 
 #np.dot(np.ones(4), a)
 
-print np.atleast_2d(np.ones(15)).T.shape
+nv = 44
+vmax = 22 * 6000.
+
+hv = 2. * vmax / nv
+vx_ = np.linspace(-vmax+hv/2, vmax-hv/2, nv) # coordinates of velocity nodes
+
+v = Boltzmann.VelocityGrid(vx_, vx_, vx_)
+
+print(v.vx)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

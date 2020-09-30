@@ -116,6 +116,20 @@ class tensor:
         q = qr(a)
         return np.linalg.norm(q.core)
 
+    def copy(self):
+
+        c = tensor()
+
+        c.n = self.n
+        c.r = self.r
+
+        c.core = self.core.copy()
+        c.u[0] = self.u[0].copy()
+        c.u[1] = self.u[1].copy()
+        c.u[2] = self.u[2].copy()
+
+        return c
+
 def div_1r(a, b):
 
     if (b.r == [1, 1, 1]):

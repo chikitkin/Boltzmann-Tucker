@@ -68,7 +68,7 @@ tol = 1e-3
 
 solver = 'impl'
 
-config = Boltzmann.Config(solver, CFL, tol, 'file-out.npy', res_filename = 'res.txt', tec_save_step = 1)
+config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 1)
 
 path = '../mesh/mesh-cyl/'
 mesh = Mesh()
@@ -76,9 +76,7 @@ mesh.read_starcd(path)
 
 # =============================================================================
 # f = open('../mesh/mesh-cyl/mesh-cyl.pickle', 'rb')
-#
 # mesh = pickle.load(file = f)
-#
 # f.close()
 # =============================================================================
 

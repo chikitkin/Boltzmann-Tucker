@@ -147,19 +147,15 @@ def comp_j(f, v, gas_params):
 
 class Config:
 
-    def __init__(self, solver, CFL, tol, filename, init_type = 'default', init_filename = None, res_filename = None, tec_save_step = 1e+5):
+    def __init__(self, solver, CFL, tol, init_type = 'default', init_filename = None, tec_save_step = 1e+5):
 
         self.solver = solver
 
         self.CFL = CFL
         self.tol = tol
 
-        self.filename = filename
-
         self.init_type = init_type
         self.init_filename = init_filename
-
-        self.res_filename = res_filename
 
         self.tec_save_step = tec_save_step
 
@@ -173,7 +169,7 @@ class Solution:
         self.v = v
         self.config = config
 
-        self.path = './' + config.solver + '.' + datetime.now().strftime("%m_%d_%Y_%H_%M_%S") + '/'
+        self.path = './' + 'job_full_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H_%M_%S") + '/'
         os.mkdir(self.path)
 
         self.h = np.min(mesh.cell_diam)
@@ -231,12 +227,12 @@ class Solution:
 
     def create_res(self):
 
-        resfile = open(self.path + self.config.res_filename, 'w')
+        resfile = open(self.path + 'res.txt', 'w')
         resfile.close()
 
     def update_res(self):
 
-        resfile = open(self.path + self.config.res_filename, 'a')
+        resfile = open(self.path + 'res.txt', 'a')
         resfile.write('%10.5E \n'% (self.frob_norm_iter[-1]))
         resfile.close()
 
