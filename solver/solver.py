@@ -169,7 +169,7 @@ class Solution:
         self.v = v
         self.config = config
 
-        self.path = './' + 'job_full_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H_%M_%S") + '/'
+        self.path = './' + 'job_full_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H:%M:%S") + '/'
         os.mkdir(self.path)
 
         self.h = np.min(mesh.cell_diam)

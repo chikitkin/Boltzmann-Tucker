@@ -181,7 +181,7 @@ class Solution:
         self.v = v
         self.config = config
 
-        self.path = './' + 'job_tucker_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H_%M_%S") + '/'
+        self.path = './' + 'job_tucker_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H:%M:%S") + '/'
         os.mkdir(self.path)
 
         self.vn = [None] * mesh.nf # list of tensors of normal velocities at each mesh face
@@ -376,10 +376,12 @@ class Solution:
                 # Compute macroparameters and collision integral
                 J, self.n[ic], self.ux[ic], self.uy[ic], self.uz[ic], self.T[ic], self.rho[ic], self.p[ic], self.nu[ic] = \
                 comp_j(self.f[ic], self.v, self.gas_params)
-                self.rhs[ic] += J
+                self.rhs[ic] += J # ? Is it correct?
                 self.rhs[ic] = self.rhs[ic].round(config.tol)
 
-            self.frob_norm_iter = np.append(self.frob_norm_iter, np.sqrt(sum([(self.rhs[ic].norm())**2 for ic in range(self.mesh.nc)])))
+            # TODO: divide by number of cells!
+            self.frob_norm_iter = np.append(self.frob_norm_iter,
+                                            np.sqrt(sum([(self.rhs[ic].norm())**2 for ic in range(self.mesh.nc)])))
 
             self.update_res()
             #

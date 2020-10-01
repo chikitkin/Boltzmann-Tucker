@@ -223,7 +223,7 @@ class Solution:
         self.v = v
         self.config = config
 
-        self.path = './' + 'job_tt_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H_%M_%S") + '/'
+        self.path = './' + 'job_tt_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H:%M:%S") + '/'
         os.mkdir(self.path)
 
         self.vn = [None] * mesh.nf # list of tensors of normal velocities at each mesh face

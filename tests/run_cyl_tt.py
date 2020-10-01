@@ -21,7 +21,6 @@ n_l = 2e+23
 T_l = 200.
 u_l = Mach * ((gas_params.g * gas_params.Rg * T_l) ** 0.5)
 T_w = 5.0 * T_l
-r = 1e-7
 
 n_s = n_l
 T_s = T_l
@@ -69,7 +68,7 @@ config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 1)
 
 path = '../mesh/mesh-cyl/'
 mesh = Mesh()
-mesh.read_starcd(path)
+mesh.read_starcd(path, l_s)
 
 # =============================================================================
 # f = open('../mesh/mesh-cyl/mesh-cyl.pickle', 'rb')
@@ -97,12 +96,12 @@ t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()
 
-log = open('log.txt', 'a')
+log = open(S.path + 'log.txt', 'a')
 log.write('Time  = ' + str(t2 - t1) + '\n')
 log.close()
 
 S.save_macro()
 
-log = open('log.txt', 'a')
+log = open(S.path + 'log.txt', 'a')
 log.write('Residual = ' + str('{0:5.2e}'.format(S.frob_norm_iter[-1]/S.frob_norm_iter[0])) + '\n')
 log.close()
