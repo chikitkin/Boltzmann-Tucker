@@ -1,10 +1,3 @@
-#!/usr/bin/env python2
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep 28 17:42:09 2020
-
-@author: egor
-"""
 import sys
 sys.path.append('../')
 import numpy as np

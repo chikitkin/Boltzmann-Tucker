@@ -100,7 +100,7 @@ class tensor:
         A = np.transpose(A, [2,1,0])
         return A
 
-    def round(a, eps):
+    def round(a, eps, rmax = 1000000):
         a = qr(a)
         b = tensor()
         b.n = a.n
@@ -110,6 +110,36 @@ class tensor:
         b.u[0] = np.dot(a.u[0], core.u[0])
         b.u[1] = np.dot(a.u[1], core.u[1])
         b.u[2] = np.dot(a.u[2], core.u[2])
+
+        if np.max(b.r) > rmax:
+            a = qr(a)
+            b = tensor()
+            b.n = a.n
+
+            A = a.core
+
+            N1, N2, N3 = A.shape
+
+            B1 = np.reshape(A, (N1, -1), order='F')
+            B2 = np.reshape(np.transpose(A, [1, 0, 2]), (N2, -1), order='F')
+            B3 = np.reshape(np.transpose(A, [2, 0, 1]), (N3, -1), order='F')
+
+            U1, V1, r1 = svd_trunc_rmax(B1, np.min(rmax, b.r[0]))
+            U2, V2, r2 = svd_trunc_rmax(B2, np.min(rmax, b.r[1]))
+            U3, V3, r3 = svd_trunc_rmax(B3, np.min(rmax, b.r[2]))
+
+            G = np.tensordot(A, np.conjugate(U3), (2,0))
+            G = np.transpose(G, [2, 0, 1])
+            G = np.tensordot(G, np.conjugate(U2), (2,0))
+            G = np.transpose(G, [0, 2, 1])
+            G = np.tensordot(G, np.conjugate(U1), (2,0))
+            G = np.transpose(G, [2, 1, 0])
+
+            b.n = [N1, N2, N3]
+            b.r = G.shape
+            b.u = [U1, U2, U3]
+            b.core = G
+
         return b
 
     def norm(a):
@@ -154,18 +184,18 @@ def sum(a):
 
     tmp = tensor()
 
-    tmp.core = np.atleast_3d(1.) # TODO
-
     tmp.n = [1, 1, 1]
     tmp.r = a.r
 
-    tmp.u[0] = np.dot(np.ones(a.n[0]), a.u[0])
-    tmp.u[1] = np.dot(np.ones(a.n[1]), a.u[1])
-    tmp.u[2] = np.dot(np.ones(a.n[2]), a.u[2])
+    tmp.core = a.core # TODO
+
+    tmp.u[0] = np.atleast_2d(np.sum(a.u[0], 0))
+    tmp.u[1] = np.atleast_2d(np.sum(a.u[1], 0))
+    tmp.u[2] = np.atleast_2d(np.sum(a.u[2], 0))
 
     S = tmp.full()
 
-    return S
+    return S[0, 0, 0]
 
 def tuck_from_factors(u0, u1, u2): # only for rank 1
 
@@ -412,6 +442,16 @@ def svd_trunc(A, eps = 1e-14):
     s = s[:r].copy()
 
     return u, H(v), r
+
+def svd_trunc_rmax(A, rmax = 1000000):
+
+    u, s, v = svd(A)
+
+    u = u[:,:rmax].copy()
+    v = v[:rmax,:].copy()
+    s = s[:rmax].copy()
+
+    return u, H(v), rmax
 
 def H(A):
     return np.transpose(np.conjugate(A))

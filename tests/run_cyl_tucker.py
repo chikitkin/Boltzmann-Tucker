@@ -9,9 +9,6 @@ from mesh.read_starcd import Mesh
 import solver.solver_tucker as Boltzmann
 import pickle
 
-log = open('log.txt', 'w') #log file (w+)
-log.close()
-
 # compute parameters for flow around cylinder
 
 # Parameters for argon (default)
@@ -63,10 +60,10 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 #print 'vmax =', vmax
 
-CFL = 5e+1
+CFL = 0.1 #5e+1
 tol = 1e-3
 
-solver = 'impl'
+solver = 'expl'
 
 config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 1)
 
@@ -80,15 +77,18 @@ mesh.read_starcd(path)
 # f.close()
 # =============================================================================
 
-log = open('log.txt', 'a')
-log.write('Mach = ' + str(Mach) + '\n')
-log.close()
-
 print 'Initialization...'
 t1 = time.clock()
 S = Boltzmann.Solution(gas_params, problem, mesh, v, config)
 t2 = time.clock()
 print 'Complete! Took', str(t2 - t1), 'seconds'
+
+log = open(S.path + 'log.txt', 'w') #log file (w+)
+log.close()
+
+log = open(S.path + 'log.txt', 'a')
+log.write('Mach = ' + str(Mach) + '\n')
+log.close()
 
 nt = 30
 t1 = time.time()

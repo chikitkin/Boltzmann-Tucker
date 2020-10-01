@@ -151,7 +151,7 @@ def comp_j(f, v, gas_params):
 
     fmax = f_maxwell_tuck(v, n, ux, uy, uz, T, gas_params.Rg)
 
-    f_plus = fmax * (v.ones + ((4. / 5.) * (1. - gas_params.Pr) * (cx*Sx + cy*Sy + cz*Sz) * ((c2 - (5. / 2.) * v.ones))))
+    f_plus = fmax * (v.ones + ((4. / 5.) * (1. - gas_params.Pr) * (Sx*cx + Sy*cy + Sz*cz) * ((c2 - (5. / 2.) * v.ones))))
     J = nu * (f_plus - f)
     J = J.round(1e-7) #, rmax = 2)
 
