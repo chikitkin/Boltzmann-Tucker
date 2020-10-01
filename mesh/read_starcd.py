@@ -18,14 +18,14 @@ class Mesh:
         #
         data = np.loadtxt(path + 'star.bnd', usecols=(1,2,3,4,5))
         self.nbf = data.shape[0]
-        print 'Number of boundary faces = ', self.nbf
+        print('Number of boundary faces = ', self.nbf)
         self.bcface_vert_lists = data[:,0:-1].astype(np.int) - 1 # -1 due to Python counts from 0
         self.bcface_bctype = data[:,-1].astype(np.int) - 1
         #
         # Construct list of boundary faces indices for each bctype
         #
         self.nbc = len(set(self.bcface_bctype)) # Number of different boundary conditions
-        print 'Number of boundary conditions = ', self.nbc
+        print('Number of boundary conditions = ', self.nbc)
         self.bf_for_each_bc = []
         for i in range(self.nbc):
             self.bf_for_each_bc.append(np.argwhere(self.bcface_bctype == i)[:,0])
@@ -41,14 +41,14 @@ class Mesh:
                 nc += 1 # else it is shell
         file.close()
         self.nc = nc
-        print 'Number of cells = ', self.nc
+        print('Number of cells = ', self.nc)
         # Count number of vertices
         file = open(path + 'star.vrt')
         for i, l in enumerate(file):
             pass
         file.close()
         self.nv = i + 1
-        print 'Number of vertices = ', self.nv
+        print('Number of vertices = ', self.nv)
 
         # Allocate arrays
         self.bc_index_list = np.zeros(shape = (self.nbf), dtype = np.int)
@@ -195,10 +195,10 @@ class Mesh:
                                 self.cell_neighbors_list[icell, lf] = ic
                 nf += 1
         self.nf = nf
-        print 'Number of faces = ', self.nf
+        print('Number of faces = ', self.nf)
         self.face_vert_list = self.face_vert_list[:self.nf, :] # exlude etra rows
         #
-        print 'sum of volumes:', np.sum(self.cell_volumes)
+        print('sum of volumes:', np.sum(self.cell_volumes))
         #
         # Compute face areas and normals
         #

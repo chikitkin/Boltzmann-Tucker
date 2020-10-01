@@ -14,7 +14,7 @@ import pickle
 # Parameters for argon (default)
 gas_params = Boltzmann.GasParams()
 
-Mach = 10.
+Mach = 3.
 Kn = 0.564
 delta = 8.0 / (5 * np.pi**0.5 * Kn)
 n_l = 2e+23
@@ -60,14 +60,14 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 #print 'vmax =', vmax
 
-CFL = 0.5 #5e+1
+CFL = 0.1 #5e+1
 tol = 1e-7
 
 solver = 'expl'
 
 config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 1)
 
-path = '../mesh/mesh-cyl/'
+path = '../mesh/mesh-shock/'
 mesh = Mesh()
 mesh.read_starcd(path)
 
@@ -77,7 +77,7 @@ mesh.read_starcd(path)
 # f.close()
 # =============================================================================
 
-print('Initialization...)'
+print('Initialization...')
 t1 = time.clock()
 S = Boltzmann.Solution(gas_params, problem, mesh, v, config)
 t2 = time.clock()

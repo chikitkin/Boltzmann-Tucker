@@ -195,7 +195,7 @@ class Solution:
             self.vn[jf] = mesh.face_normals[jf, 0] * v.vx_tt + mesh.face_normals[jf, 1] * v.vy_tt + mesh.face_normals[jf, 2] * v.vz_tt
             self.vnp[jf] = tuck.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
             self.vnm[jf] = tuck.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
-            self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp), eps = 1e-1) # TODO rmax
+            self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 4) # TODO rmax
 
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))
