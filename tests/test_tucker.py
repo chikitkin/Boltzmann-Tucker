@@ -73,3 +73,4 @@ print( 'duy = ', (Macro[3] - uy) / uy )
 print( 'duz = ', (Macro[4] - uz) / uz )
 print( 'T = ', Macro[5] )
 #
+print (((tuck.tensor(v.vx*v.vx + v.vy*v.vy + v.vz*v.vz).round(1e-7, rmax = 1)).full()).shape)

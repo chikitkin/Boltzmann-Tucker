@@ -70,7 +70,7 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 #print 'vmax =', vmax
 
-config = Boltzmann.Config(solver = 'expl', CFL = 0.5, tol = 1e-3, tec_save_step = 10)
+config = Boltzmann.Config(solver = 'impl', CFL = 50., tol = 1e-3, tec_save_step = 10)
 
 path = '../mesh/mesh-shock/'
 mesh = Mesh()
