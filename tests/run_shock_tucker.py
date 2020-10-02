@@ -70,12 +70,7 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 #print 'vmax =', vmax
 
-CFL = 0.1 #5e+1
-tol = 1e-7
-
-solver = 'expl'
-
-config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 1)
+config = Boltzmann.Config(solver = 'expl', CFL = 0.5, tol = 1e-3, tec_save_step = 10)
 
 path = '../mesh/mesh-shock/'
 mesh = Mesh()
@@ -100,16 +95,18 @@ log = open(S.path + 'log.txt', 'a')
 log.write('Mach = ' + str(Mach) + '\n')
 log.close()
 
-nt = 30
+nt = 200
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()
 
 log = open(S.path + 'log.txt', 'a')
-log.write('Time  = ' + str(t2 - t1) + '\n')
+log.write('Time  = ' + time.strftime('%H:%M:%S', time.gmtime(t2 - t1)) + '\n')
 log.close()
 
 S.save_macro()
+
+S.plot_macro()
 
 log = open(S.path + 'log.txt', 'a')
 log.write('Residual = ' + str('{0:5.2e}'.format(S.frob_norm_iter[-1]/S.frob_norm_iter[0])) + '\n')

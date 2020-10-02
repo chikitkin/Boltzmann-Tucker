@@ -367,6 +367,22 @@ class Solution:
 
         return f
 
+    def plot_macro(self):
+
+        fig, ax = plt.subplots(figsize = (12,6))
+        line, = ax.plot(self.mesh.cell_center_coo[:, 0], (self.n - self.n[0]) / (self.n[-1] - self.n[0]), 'k-', linewidth=4)
+        line.set_label('Density')
+        line, = ax.plot(self.mesh.cell_center_coo[:, 0], (self.ux - self.ux[-1]) / (self.ux[0] - self.ux[-1]), 'b-', linewidth=4)
+        line.set_label('Velocity')
+        line, = ax.plot(self.mesh.cell_center_coo[:, 0], (self.T - self.T[0]) / (self.T[-1] - self.T[0]), 'r-', linewidth=4)
+        line.set_label('Temperature')
+
+        plt.grid()
+        ax.legend()
+        ax.set_xlabel('x')
+        plt.savefig(self.path + 'plot.png', dpi = 200)
+        plt.close()
+
     def make_time_steps(self, config, nt):
 
         self.config = config

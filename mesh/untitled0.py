@@ -6,6 +6,13 @@ from datetime import datetime
 import os
 import tucker.tucker as tuck
 import solver.solver_tucker as Boltzmann
+import tt
+
+a = tt.ones([3, 3, 3])
+
+b = tt.ones([3, 3, 3]) * 4
+
+a += b
 
 # =============================================================================
 # from read_starcd import Mesh

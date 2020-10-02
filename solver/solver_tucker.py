@@ -199,32 +199,30 @@ class Solution:
 
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))
-# =============================================================================
-#
-#         self.diag = [None] * mesh.nc # part of diagonal coefficient in implicit scheme
-#         self.diag_r1 = [None] * mesh.nc
-#         # precompute diag
-#         # simple approximation for v_abs
-#         self.vn_abs_r1 = tuck.tensor((v.vx**2 + v.vy**2 + v.vz**2)**0.5, rmax = 1) # TODO rmax
-#         for ic in range(mesh.nc):
-#             diag_temp = np.zeros((v.nvx, v.nvy, v.nvz))
-#             diag_sc = 0.
-#             for j in range(6):
-#                 jf = mesh.cell_face_list[ic, j]
-#                 vn_full = (mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy \
-#                            + mesh.face_normals[jf, 2] * v.vz) * mesh.cell_face_normal_direction[ic, j]
-#                 vnp_full = np.where(vn_full > 0, vn_full, 0.)
-#                 vn_abs_full = np.abs(vn_full)
-#                 diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
-#                 diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic])
-#             self.diag_r1[ic] = diag_sc * self.vn_abs_r1
-#             diag_tt_full = tt.tensor(diag_temp, 1e-7, rmax = 1).full()
-#             if (np.amax(diag_temp - diag_tt_full) > 0.):
-#                 ind_max = np.unravel_index(np.argmax(diag_temp - diag_tt_full), diag_temp.shape)
-#                 diag_tt_full = (diag_temp[ind_max] / diag_tt_full[ind_max]) * diag_tt_full
-#             self.diag[ic] = tt.tensor(diag_tt_full)
-#
-# =============================================================================
+
+        self.diag = [None] * mesh.nc # part of diagonal coefficient in implicit scheme
+        self.diag_r1 = [None] * mesh.nc
+        # precompute diag
+        # simple approximation for v_abs
+        self.vn_abs_r1 = tuck.tensor((v.vx**2 + v.vy**2 + v.vz**2)**0.5).round(1e-7, rmax = 1) # TODO rmax
+        for ic in range(mesh.nc):
+            diag_temp = np.zeros((v.nvx, v.nvy, v.nvz))
+            diag_sc = 0.
+            for j in range(6):
+                jf = mesh.cell_face_list[ic, j]
+                vn_full = (mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy \
+                           + mesh.face_normals[jf, 2] * v.vz) * mesh.cell_face_normal_direction[ic, j]
+                vnp_full = np.where(vn_full > 0, vn_full, 0.)
+                vn_abs_full = np.abs(vn_full)
+                diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
+                diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic])
+            self.diag_r1[ic] = diag_sc * self.vn_abs_r1
+            diag_tt_full = tuck.tensor(diag_temp).round(1e-7, rmax = 1).full()
+            if (np.amax(diag_temp - diag_tt_full) > 0.):
+                ind_max = np.unravel_index(np.argmax(diag_temp - diag_tt_full), diag_temp.shape)
+                diag_tt_full = (diag_temp[ind_max] / diag_tt_full[ind_max]) * diag_tt_full
+            self.diag[ic] = tuck.tensor(diag_tt_full)
+
         # set initial condition
         self.f = [None] * mesh.nc # RENAME f!
 
@@ -329,6 +327,22 @@ class Solution:
 #         return f
 # =============================================================================
 
+    def plot_macro(self):
+
+        fig, ax = plt.subplots(figsize = (12,6))
+        line, = ax.plot(self.mesh.cell_center_coo[:, 0], (self.n - self.n[0]) / (self.n[-1] - self.n[0]), 'k-', linewidth=4)
+        line.set_label('Density')
+        line, = ax.plot(self.mesh.cell_center_coo[:, 0], (self.ux - self.ux[-1]) / (self.ux[0] - self.ux[-1]), 'b-', linewidth=4)
+        line.set_label('Velocity')
+        line, = ax.plot(self.mesh.cell_center_coo[:, 0], (self.T - self.T[0]) / (self.T[-1] - self.T[0]), 'r-', linewidth=4)
+        line.set_label('Temperature')
+
+        plt.grid()
+        ax.legend()
+        ax.set_xlabel('x')
+        plt.savefig(self.path + 'plot.png', dpi = 200)
+        plt.close()
+
     def make_time_steps(self, config, nt):
 
         self.config = config
@@ -390,67 +404,65 @@ class Solution:
             if (self.config.solver == 'expl'):
                 for ic in range(self.mesh.nc):
                     self.f[ic] = (self.f[ic] + self.tau * self.rhs[ic]).round(config.tol)
-# =============================================================================
-#             #
-#             # LU-SGS iteration
-#             #
-#             #
-#             # Backward sweep
-#             #
-#             elif (self.config.solver == 'impl'):
-#                 for ic in range(self.mesh.nc - 1, -1, -1):
-#                     self.df[ic] = self.rhs[ic].copy()
-#                 for ic in range(self.mesh.nc - 1, -1, -1):
-#                     # loop over neighbors of cell ic
-#                     for j in range(6):
-#                         jf = self.mesh.cell_face_list[ic, j]
-#                         icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
-#                         if self.mesh.cell_face_normal_direction[ic, j] == 1:
-#                             vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
-#                         else:
-#                             vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
-#                         if (icn >= 0 ) and (icn > ic):
-#         #                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
-#         #                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn])
-#                             self.df[ic] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
-#                             * vnm_loc * self.df[icn]
-#                             self.df[ic] = self.df[ic].round(config.tol)
-#                     # divide by diagonal coefficient
-#                     diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
-#                     self.df[ic] = div_tt(self.df[ic], diag_temp)
-#                 #
-#                 # Forward sweep
-#                 #
-#                 for ic in range(self.mesh.nc):
-#                     # loop over neighbors of cell ic
-#                     incr = self.v.zero.copy()
-#                     for j in range(6):
-#                         jf = self.mesh.cell_face_list[ic, j]
-#                         icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
-#                         if self.mesh.cell_face_normal_direction[ic, j] == 1:
-#                             vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
-#                         else:
-#                             vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
-#                         if (icn >= 0 ) and (icn < ic):
-#         #                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
-#         #                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn]
-#                             incr+= -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
-#                             * vnm_loc * self.df[icn]
-#                             incr = incr.round(config.tol)
-#                     # divide by diagonal coefficient
-#                     diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
-#                     self.df[ic] += div_tt(incr, diag_temp)
-#                     self.df[ic] = self.df[ic].round(config.tol)
-#                 #
-#                 # Update values
-#                 #
-#                 for ic in range(self.mesh.nc):
-#                     self.f[ic] += self.df[ic]
-#                     self.f[ic] = self.f[ic].round(config.tol)
-#                 #
-#                 # end of LU-SGS iteration
-#                 #
-# =============================================================================
+            #
+            # LU-SGS iteration
+            #
+            #
+            # Backward sweep
+            #
+            elif (self.config.solver == 'impl'):
+                for ic in range(self.mesh.nc - 1, -1, -1):
+                    self.df[ic] = self.rhs[ic].copy()
+                for ic in range(self.mesh.nc - 1, -1, -1):
+                    # loop over neighbors of cell ic
+                    for j in range(6):
+                        jf = self.mesh.cell_face_list[ic, j]
+                        icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
+                        if self.mesh.cell_face_normal_direction[ic, j] == 1:
+                            vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
+                        else:
+                            vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
+                        if (icn >= 0 ) and (icn > ic):
+        #                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
+        #                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn])
+                            self.df[ic] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
+                            * vnm_loc * self.df[icn]
+                            self.df[ic] = self.df[ic].round(config.tol)
+                    # divide by diagonal coefficient
+                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+                    self.df[ic] = tuck.div_1r(self.df[ic], diag_temp)
+                #
+                # Forward sweep
+                #
+                for ic in range(self.mesh.nc):
+                    # loop over neighbors of cell ic
+                    incr = self.v.zero.copy()
+                    for j in range(6):
+                        jf = self.mesh.cell_face_list[ic, j]
+                        icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
+                        if self.mesh.cell_face_normal_direction[ic, j] == 1:
+                            vnm_loc = 0.5 * (self.vn[jf] - self.vn_abs_r1) # vnm[jf]
+                        else:
+                            vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
+                        if (icn >= 0 ) and (icn < ic):
+        #                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
+        #                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn]
+                            incr+= -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
+                            * vnm_loc * self.df[icn]
+                            incr = incr.round(config.tol)
+                    # divide by diagonal coefficient
+                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+                    self.df[ic] += tuck.div_1r(incr, diag_temp)
+                    self.df[ic] = self.df[ic].round(config.tol)
+                #
+                # Update values
+                #
+                for ic in range(self.mesh.nc):
+                    self.f[ic] += self.df[ic]
+                    self.f[ic] = self.f[ic].round(config.tol)
+                #
+                # end of LU-SGS iteration
+                #
             # save rhs norm and tec tile
             if ((self.it % config.tec_save_step) == 0):
                 self.write_tec()
