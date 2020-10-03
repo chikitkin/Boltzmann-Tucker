@@ -100,45 +100,42 @@ class tensor:
         A = np.transpose(A, [2,1,0])
         return A
 
-    def round(a, eps, rmax = 1000000):
+    def round(a, eps = 1e-14, rmax = 1000000):
         a = qr(a)
         b = tensor()
         b.n = a.n
         core = tensor(a.core, eps)
-        b.core = core.core
-        b.r = b.core.shape
-        b.u[0] = np.dot(a.u[0], core.u[0])
-        b.u[1] = np.dot(a.u[1], core.u[1])
-        b.u[2] = np.dot(a.u[2], core.u[2])
+        b.r = core.core.shape
 
         if np.max(b.r) > rmax:
-            a = qr(a)
-            b = tensor()
-            b.n = a.n
 
-            A = a.core
+            B1 = np.reshape(a.core, (a.r[0], -1), order='F')
+            B2 = np.reshape(np.transpose(a.core, [1, 0, 2]), (a.r[1], -1), order='F')
+            B3 = np.reshape(np.transpose(a.core, [2, 0, 1]), (a.r[2], -1), order='F')
 
-            N1, N2, N3 = A.shape
+            U1, V1, r1 = svd_trunc_rmax(B1, np.min([rmax, b.r[0]]))
+            U2, V2, r2 = svd_trunc_rmax(B2, np.min([rmax, b.r[1]]))
+            U3, V3, r3 = svd_trunc_rmax(B3, np.min([rmax, b.r[2]]))
 
-            B1 = np.reshape(A, (N1, -1), order='F')
-            B2 = np.reshape(np.transpose(A, [1, 0, 2]), (N2, -1), order='F')
-            B3 = np.reshape(np.transpose(A, [2, 0, 1]), (N3, -1), order='F')
-
-            U1, V1, r1 = svd_trunc_rmax(B1, np.min(rmax, b.r[0]))
-            U2, V2, r2 = svd_trunc_rmax(B2, np.min(rmax, b.r[1]))
-            U3, V3, r3 = svd_trunc_rmax(B3, np.min(rmax, b.r[2]))
-
-            G = np.tensordot(A, np.conjugate(U3), (2,0))
+            G = np.tensordot(a.core, np.conjugate(U3), (2,0))
             G = np.transpose(G, [2, 0, 1])
             G = np.tensordot(G, np.conjugate(U2), (2,0))
             G = np.transpose(G, [0, 2, 1])
             G = np.tensordot(G, np.conjugate(U1), (2,0))
             G = np.transpose(G, [2, 1, 0])
 
-            b.n = [N1, N2, N3]
-            b.r = G.shape
-            b.u = [U1, U2, U3]
             b.core = G
+            b.r = G.shape
+            b.u[0] = np.dot(a.u[0], U1)
+            b.u[1] = np.dot(a.u[1], U2)
+            b.u[2] = np.dot(a.u[2], U3)
+
+        else:
+
+            b.core = core.core
+            b.u[0] = np.dot(a.u[0], core.u[0])
+            b.u[1] = np.dot(a.u[1], core.u[1])
+            b.u[2] = np.dot(a.u[2], core.u[2])
 
         return b
 
@@ -162,7 +159,7 @@ class tensor:
 
 def div_1r(a, b):
 
-    if (b.r == [1, 1, 1]):
+    if (np.sum(b.r) == 3):
 
         c = tensor()
 

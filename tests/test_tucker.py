@@ -73,4 +73,9 @@ print( 'duy = ', (Macro[3] - uy) / uy )
 print( 'duz = ', (Macro[4] - uz) / uz )
 print( 'T = ', Macro[5] )
 #
-print (((tuck.tensor(v.vx*v.vx + v.vy*v.vy + v.vz*v.vz).round(1e-7, rmax = 1)).full()).shape)
+v2_tuck_full = tuck.tensor(v.vx*v.vx + v.vy*v.vy + v.vz*v.vz).round(1e-7, rmax = 1).full()
+print (np.linalg.norm(v2_tuck_full - v.vx*v.vx + v.vy*v.vy + v.vz*v.vz) / np.linalg.norm(v.vx*v.vx + v.vy*v.vy + v.vz*v.vz))
+
+print( np.min([1, 2]) )
+
+print( (1, 1, 1) == [1, 1, 1] )

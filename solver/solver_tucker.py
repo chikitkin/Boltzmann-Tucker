@@ -429,7 +429,7 @@ class Solution:
                             * vnm_loc * self.df[icn]
                             self.df[ic] = self.df[ic].round(config.tol)
                     # divide by diagonal coefficient
-                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+                    diag_temp = ((1./self.tau + self.nu[ic]) * self.v.ones + self.diag_r1[ic]).round(1e-3, rmax = 1)
                     self.df[ic] = tuck.div_1r(self.df[ic], diag_temp)
                 #
                 # Forward sweep
@@ -451,7 +451,7 @@ class Solution:
                             * vnm_loc * self.df[icn]
                             incr = incr.round(config.tol)
                     # divide by diagonal coefficient
-                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+                    diag_temp = ((1./self.tau + self.nu[ic]) * self.v.ones + self.diag_r1[ic]).round(1e-3, rmax = 1)
                     self.df[ic] += tuck.div_1r(incr, diag_temp)
                     self.df[ic] = self.df[ic].round(config.tol)
                 #
