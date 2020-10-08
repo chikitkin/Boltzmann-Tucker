@@ -58,13 +58,7 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 
 #print 'vmax =', vmax
-
-CFL = 5e+1
-tol = 1e-3
-
-solver = 'impl'
-
-config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 1)
+config = Boltzmann.Config(solver = 'impl', CFL = 50., tol = 1e-3, tec_save_step = 10)
 
 path = '../mesh/mesh-cyl/'
 mesh = Mesh()

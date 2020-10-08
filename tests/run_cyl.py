@@ -58,12 +58,7 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 #print 'vmax =', vmax
 
-CFL = 5e+1
-tol = 1e-3
-
-solver = 'impl'
-
-config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 1)
+config = Boltzmann.Config(solver = 'impl', CFL = 50., tol = 1e-3, tec_save_step = 10)
 
 path = '../mesh/mesh-cyl/'
 mesh = Mesh()
@@ -90,7 +85,7 @@ log = open(S.path + 'log.txt', 'a')
 log.write('Mach = ' + str(Mach) + '\n')
 log.close()
 
-nt = 30
+nt = 2000
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()
