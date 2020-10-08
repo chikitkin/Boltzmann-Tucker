@@ -468,7 +468,8 @@ class Solution:
                             self.df[ic] = self.df[ic].round(config.tol)
                     # divide by diagonal coefficient
                     diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
-                    self.df[ic] = div_tt(self.df[ic], diag_temp)
+                    self.df[ic] = div_tt(self.df[ic], diag_temp) # TODO
+                    self.df[ic] = self.df[ic].round(config.tol)
                 #
                 # Forward sweep
                 #

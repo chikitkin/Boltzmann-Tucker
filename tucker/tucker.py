@@ -163,7 +163,7 @@ def div_1r(a, b):
 
         c = tensor()
 
-        c.core = a.core
+        c.core = a.core.copy() # TODO
         c.r = a.r
         c.n = a.n
 
