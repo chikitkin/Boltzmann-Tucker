@@ -1,6 +1,6 @@
 import numpy as np
 import copy
-import scipy.interpolate as interpolate
+#import scipy.interpolate as interpolate
 
 
 class tensor:
@@ -541,8 +541,8 @@ def interp(a, x_old, x_new):
     for alpha in range(3):
         for i in range(a.r[alpha]):
             temp = copy.copy(a.u[alpha][:, i])
-            tck = interpolate.splrep(x_old, temp, s=0)
-            b.u[alpha][:, i] = interpolate.splev(x_new, tck, der=0)
+#            tck = interpolate.splrep(x_old, temp, s=0)
+#            b.u[alpha][:, i] = interpolate.splev(x_new, tck, der=0)
 
     return b
 

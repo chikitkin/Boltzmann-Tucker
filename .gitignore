@@ -5,3 +5,7 @@
 *.png
 job*
 .ipynb*
+run_sbatch
+cyl
+shock
+*.out

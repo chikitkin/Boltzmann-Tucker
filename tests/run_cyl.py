@@ -35,7 +35,7 @@ l_s = delta * mu_s * v_s / p_s
 
 #print 'v_s = ', v_s
 
-nv = 44
+nv = 64
 vmax = 22 * v_s
 
 hv = 2. * vmax / nv
