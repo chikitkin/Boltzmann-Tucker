@@ -20,7 +20,7 @@ def f_maxwell(v, n, ux, uy, uz, T, Rg):
     """
     return n * ((1. / (2. * np.pi * Rg * T)) ** (3. / 2.)) * (np.exp(-((v.vx - ux)**2 + (v.vy - uy)**2 + (v.vz - uz)**2) / (2. * Rg * T)))
 
-def f_maxwell_tuck(v, n, ux, uy, uz, T, Rg):
+def f_maxwell_t(v, n, ux, uy, uz, T, Rg):
 
     return n * ((1. / (2. * np.pi * Rg * T)) ** (3. / 2.)) * tuck.tuck_from_factors(np.exp(-((v.vx_ - ux) ** 2) / (2. * Rg * T)),
                                                                              np.exp(-((v.vy_ - uy) ** 2) / (2. * Rg * T)),
@@ -43,11 +43,11 @@ class VelocityGrid:
 
         self.vx, self.vy, self.vz = np.meshgrid(vx_, vy_, vz_, indexing='ij')
 
-        self.vx_tt = tuck.tuck_from_factors(vx_, np.ones(self.nvy), np.ones(self.nvz))
-        self.vy_tt = tuck.tuck_from_factors(np.ones(self.nvx), vy_, np.ones(self.nvz))
-        self.vz_tt = tuck.tuck_from_factors(np.ones(self.nvx), np.ones(self.nvy), vz_)
+        self.vx_t = tuck.tuck_from_factors(vx_, np.ones(self.nvy), np.ones(self.nvz))
+        self.vy_t = tuck.tuck_from_factors(np.ones(self.nvx), vy_, np.ones(self.nvz))
+        self.vz_t = tuck.tuck_from_factors(np.ones(self.nvx), np.ones(self.nvy), vz_)
 
-        self.v2 = (self.vx_tt*self.vx_tt + self.vy_tt*self.vy_tt + self.vz_tt*self.vz_tt).round(1e-7) # TODO rmax
+        self.v2 = (self.vx_t*self.vx_t + self.vy_t*self.vy_t + self.vz_t*self.vz_t).round(1e-7) # TODO rmax
 
         self.zero = tuck.zeros((self.nvx, self.nvy, self.nvz))
         self.ones = tuck.ones((self.nvx, self.nvy, self.nvz))
@@ -118,9 +118,9 @@ def comp_macro_params(f, v, gas_params):
     if n <= 0.:
         n = 1e+10
 
-    ux = (1. / n) * v.hv3 * tuck.sum(v.vx_tt * f)
-    uy = (1. / n) * v.hv3 * tuck.sum(v.vy_tt * f)
-    uz = (1. / n) * v.hv3 * tuck.sum(v.vz_tt * f)
+    ux = (1. / n) * v.hv3 * tuck.sum(v.vx_t * f)
+    uy = (1. / n) * v.hv3 * tuck.sum(v.vy_t * f)
+    uz = (1. / n) * v.hv3 * tuck.sum(v.vz_t * f)
 
     u2 = ux*ux + uy*uy + uz*uz
 
@@ -149,7 +149,7 @@ def comp_j(f, v, gas_params):
     Sy = (1. / n) * v.hv3 * tuck.sum(cy * c2 * f)
     Sz = (1. / n) * v.hv3 * tuck.sum(cz * c2 * f)
 
-    fmax = f_maxwell_tuck(v, n, ux, uy, uz, T, gas_params.Rg)
+    fmax = f_maxwell_t(v, n, ux, uy, uz, T, gas_params.Rg)
 
     f_plus = fmax * (v.ones + ((4. / 5.) * (1. - gas_params.Pr) * (Sx*cx + Sy*cy + Sz*cz) * ((c2 - (5. / 2.) * v.ones))))
     J = nu * (f_plus - f)
@@ -192,7 +192,7 @@ class Solution:
 
         for jf in range(mesh.nf):
             self.vn_tmp = mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy + mesh.face_normals[jf, 2] * v.vz
-            self.vn[jf] = mesh.face_normals[jf, 0] * v.vx_tt + mesh.face_normals[jf, 1] * v.vy_tt + mesh.face_normals[jf, 2] * v.vz_tt
+            self.vn[jf] = mesh.face_normals[jf, 0] * v.vx_t + mesh.face_normals[jf, 1] * v.vy_t + mesh.face_normals[jf, 2] * v.vz_t
             self.vnp[jf] = tuck.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
             self.vnm[jf] = tuck.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
             self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 4) # TODO rmax
@@ -217,11 +217,11 @@ class Solution:
                 diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
                 diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic])
             self.diag_r1[ic] = diag_sc * self.vn_abs_r1
-            diag_tt_full = tuck.tensor(diag_temp).round(1e-7, rmax = 1).full()
-            if (np.amax(diag_temp - diag_tt_full) > 0.):
-                ind_max = np.unravel_index(np.argmax(diag_temp - diag_tt_full), diag_temp.shape)
-                diag_tt_full = (diag_temp[ind_max] / diag_tt_full[ind_max]) * diag_tt_full
-            self.diag[ic] = tuck.tensor(diag_tt_full)
+            diag_t_full = tuck.tensor(diag_temp).round(1e-7, rmax = 1).full()
+            if (np.amax(diag_temp - diag_t_full) > 0.):
+                ind_max = np.unravel_index(np.argmax(diag_temp - diag_t_full), diag_temp.shape)
+                diag_t_full = (diag_temp[ind_max] / diag_t_full[ind_max]) * diag_t_full
+            self.diag[ic] = tuck.tensor(diag_t_full)
 
         # set initial condition
         self.f = [None] * mesh.nc # RENAME f!
@@ -239,7 +239,7 @@ class Solution:
             # restart form macroparameters array
             init_data = np.loadtxt(config.init_filename)
             for ic in range(mesh.nc):
-                self.f[ic] = f_maxwell_tuck(v, init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], init_data[ic, 5], gas_params.Rg)
+                self.f[ic] = f_maxwell_t(v, init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], init_data[ic, 5], gas_params.Rg)
 
         self.f_plus = [None] * mesh.nf # Reconstructed values on the right
         self.f_minus = [None] * mesh.nf # reconstructed values on the left

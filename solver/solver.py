@@ -19,6 +19,10 @@ def f_maxwell(v, n, ux, uy, uz, T, Rg):
     """
     return n * ((1. / (2. * np.pi * Rg * T)) ** (3. / 2.)) * (np.exp(-((v.vx - ux)**2 + (v.vy - uy)**2 + (v.vz - uz)**2) / (2. * Rg * T)))
 
+def f_maxwell_t(v, n, ux, uy, uz, T, Rg):
+
+    return f_maxwell(v, n, ux, uy, uz, T, Rg)
+
 class VelocityGrid:
     def __init__(self, vx_, vy_, vz_):
         self.vx_ = vx_
