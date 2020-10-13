@@ -330,6 +330,8 @@ class Solution:
         self.data[:, 3] = self.uz[:]
         self.data[:, 4] = self.p[:]
         self.data[:, 5] = self.T[:]
+        for ic in range(self.mesh.nc):
+            self.rank[ic] = self.f[ic].erank
         self.data[:, 6] = self.rank[:]
 
         write_tecplot(self.mesh, self.data, self.path + 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
