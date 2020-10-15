@@ -334,11 +334,11 @@ class Solution:
              
              t.r = F[-4:-1, i]
 
-             t.core = F[:t.r[0]*t.r[1]*t.r[2]]
+             t.core = F[:t.r[0]*t.r[1]*t.r[2]].reshape((t.r[0], t.r[1], t.r[2]))
 
-             t.u[0] = F[m * m * m : self.v.nvx * t.r[0]]
-             t.u[1] = F[m * m * m + self.v.nvx * m : self.v.nvy * t.r[1]]
-             t.u[2] = F[m * m * m + self.v.nvx * m + self.v.nvy * m : self.v.nvz * t.r[2]]
+             t.u[0] = F[m * m * m : self.v.nvx * t.r[0]].reshape((self.v.nvx, t.r[0]))
+             t.u[1] = F[m * m * m + self.v.nvx * m : self.v.nvy * t.r[1]].reshape((self.v.nvy, t.r[1]))
+             t.u[2] = F[m * m * m + self.v.nvx * m + self.v.nvy * m : self.v.nvz * t.r[2]].reshape((self.v.nvz, t.r[2]))
 
              f.append(t)
 
