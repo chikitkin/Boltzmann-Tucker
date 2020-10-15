@@ -1,3 +1,0 @@
-#!/bin/sh
-#SBATCH
-srun python run-cyl.py

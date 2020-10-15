@@ -344,7 +344,7 @@ class Solution:
         """ Save the solution into a file
         """
 
-        m = max(self.f[i].core.size for i in range(self.mesh.nc))
+        m = np.max([self.f[i].core.size for i in range(self.mesh.nc)])
 
         F = np.zeros((m+4, self.mesh.nc))
 

@@ -9,6 +9,7 @@ import pickle
 tensor_format = 'full'
 tensor_format = 'tt'
 tensor_format = 'tuck'
+tensor_format = str(sys.argv[1])
 
 if tensor_format == 'full':
     import solver.solver as Boltzmann
@@ -20,6 +21,9 @@ elif tensor_format == 'tt':
 elif tensor_format == 'tuck':
     import tucker.tucker as tuck
     import solver.solver_tuck as Boltzmann
+
+else:
+    raise Exception('Wrong arguments!')
 
 # compute parameters for flow around cylinder
 
@@ -44,6 +48,10 @@ mu_s = gas_params.mu(T_s)
 
 l_s = delta * mu_s * v_s / p_s
 
+n_r = (gas_params.g + 1.) * Mach * Mach / ((gas_params.g - 1.) * Mach * Mach + 2.) * n_l
+u_r = ((gas_params.g - 1.) * Mach * Mach + 2.) / ((gas_params.g + 1.) * Mach * Mach) * u_l
+T_r = (2. * gas_params.g * Mach * Mach - (gas_params.g - 1.)) * ((gas_params.g - 1.) * Mach * Mach + 2.) / ((gas_params.g + 1) ** 2 * Mach * Mach) * T_l
+
 #print 'l_s = ', l_s
 
 #print 'v_s = ', v_s
@@ -56,14 +64,14 @@ vx_ = np.linspace(-vmax+hv/2, vmax-hv/2, nv) # coordinates of velocity nodes
 
 v = Boltzmann.VelocityGrid(vx_, vx_, vx_)
 
+f_in = Boltzmann.f_maxwell_t(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
+f_out = Boltzmann.f_maxwell_t(v, n_r, u_r, 0., 0., T_r, gas_params.Rg)
+
 def f_init(x, y, z, v):
     if (x <= 0.):
         return Boltzmann.f_maxwell_t(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
     else:
         return Boltzmann.f_maxwell_t(v, n_r, u_r, 0., 0., T_r, gas_params.Rg)
-
-f_in = Boltzmann.f_maxwell_t(v, n_l, u_l, 0., 0., T_l, gas_params.Rg)
-f_out = Boltzmann.f_maxwell_t(v, n_r, u_r, 0., 0., T_r, gas_params.Rg)
 
 #print(f_bound)
 fmax = Boltzmann.f_maxwell_t(v, 1., 0., 0., 0., T_w, gas_params.Rg)
@@ -80,7 +88,7 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 config = Boltzmann.Config(solver = 'impl', CFL = 50., tol = 1e-3, tec_save_step = 10)
 
-path = '../mesh/mesh-cyl/'
+path = '../mesh/mesh-shock/'
 mesh = Mesh()
 mesh.read_starcd(path, l_s)
 
@@ -103,7 +111,7 @@ log = open(S.path + 'log.txt', 'a')
 log.write('Mach = ' + str(Mach) + '\n')
 log.close()
 
-nt = 500
+nt = 1000
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()
@@ -113,6 +121,8 @@ log.write('Time  = ' + time.strftime('%H:%M:%S', time.gmtime(t2 - t1)) + '\n')
 log.close()
 
 S.save_macro()
+
+S.plot_macro()
 
 log = open(S.path + 'log.txt', 'a')
 log.write('Residual = ' + str('{0:5.2e}'.format(S.frob_norm_iter[-1]/S.frob_norm_iter[0])) + '\n')

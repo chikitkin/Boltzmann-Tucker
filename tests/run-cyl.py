@@ -9,6 +9,7 @@ import pickle
 tensor_format = 'full'
 tensor_format = 'tt'
 tensor_format = 'tuck'
+tensor_format = str(sys.argv[1])
 
 if tensor_format == 'full':
     import solver.solver as Boltzmann
@@ -20,6 +21,9 @@ elif tensor_format == 'tt':
 elif tensor_format == 'tuck':
     import tucker.tucker as tuck
     import solver.solver_tuck as Boltzmann
+
+else:
+    raise Exception('Wrong arguments!')
 
 # compute parameters for flow around cylinder
 
@@ -96,7 +100,7 @@ log = open(S.path + 'log.txt', 'a')
 log.write('Mach = ' + str(Mach) + '\n')
 log.close()
 
-nt = 1000
+nt = 600
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()

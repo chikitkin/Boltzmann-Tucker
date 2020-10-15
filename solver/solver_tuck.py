@@ -298,36 +298,51 @@ class Solution:
 
         np.savetxt(self.path + 'macro.txt', self.data)
 
-# =============================================================================
-#     def save_restart(self):
-#         """ Save the solution into a file
-#         """
-#
-#         m = max(self.f[i].core.size for i in range(self.mesh.nc))
-#
-#         F = np.zeros((m+4, self.mesh.nc))
-#
-#         for i in range(self.mesh.nc):
-#             F[:4, i] = self.f[i].r.ravel()
-#             F[4:self.f[i].core.size+4, i] = self.f[i].core.ravel()
-#
-#         np.save(self.path + 'restart.npy', F)#, fmt='%s')
-#
-#     def load_restart(self):
-#         """ Load the solution from a file
-#         """
-#
-#         F = np.load(self.config.init_filename)
-#
-#         f = list()
-#
-#         for i in range(self.mesh.nc):
-#
-#             f.append(tt.rand([self.v.nvx, self.v.nvy, self.v.nvz], 3, F[:4, i]))
-#             f[i].core = F[4:f[i].core.size+4, i]
-#
-#         return f
-# =============================================================================
+     def save_restart(self):
+         """ Save the solution into a file
+         """
+
+         m = np.max([self.f[i].r for i in range(self.mesh.nc)])
+
+         F = np.zeros((m * m * m + self.v.nvx * m + self.v.nvy * m + self.v.nvz * m + 4, self.mesh.nc))
+
+         for i in range(self.mesh.nc):
+             F[-1:, i] = m
+             F[-4:-1, i] = np.array(self.f[i].r)
+             F[:self.f[i].core.size, i] = self.f[i].core.ravel()
+             F[m * m * m : self.f[i].u[0].size, i] = self.f[i].u[0].ravel()
+             F[m * m * m + self.v.nvx * m : self.f[i].u[1].size, i] = self.f[i].u[1].ravel()
+             F[m * m * m + self.v.nvx * m + self.v.nvy * m : self.f[i].u[2].size, i] = self.f[i].u[2].ravel()
+
+         np.save(self.path + 'restart.npy', F)#, fmt='%s')
+
+     def load_restart(self):
+         """ Load the solution from a file
+         """
+
+         F = np.load(self.config.init_filename)
+
+         f = list()
+
+         m = F[-1, 0]
+
+         for i in range(self.mesh.nc):
+
+             t = tuck.tensor()
+
+             t.n = [self.v.nvx, self.v.nvy, self.v.nvz]
+             
+             t.r = F[-4:-1, i]
+
+             t.core = F[:t.r[0]*t.r[1]*t.r[2]]
+
+             t.u[0] = F[m * m * m : self.v.nvx * t.r[0]]
+             t.u[1] = F[m * m * m + self.v.nvx * m : self.v.nvy * t.r[1]]
+             t.u[2] = F[m * m * m + self.v.nvx * m + self.v.nvy * m : self.v.nvz * t.r[2]]
+
+             f.append(t)
+
+         return f
 
     def plot_macro(self):
 
@@ -470,5 +485,5 @@ class Solution:
             if ((self.it % config.tec_save_step) == 0):
                 self.write_tec()
 
-#        self.save_restart()
-#        self.write_tec()
+        self.save_restart()
+        self.write_tec()

@@ -21,7 +21,9 @@ def f_maxwell(v, n, ux, uy, uz, T, Rg):
 
 def f_maxwell_t(v, n, ux, uy, uz, T, Rg):
 
-    return f_maxwell(v, n, ux, uy, uz, T, Rg)
+    f = f_maxwell(v, n, ux, uy, uz, T, Rg)
+
+    return f
 
 class VelocityGrid:
     def __init__(self, vx_, vy_, vz_):
