@@ -21,9 +21,7 @@ def f_maxwell(v, n, ux, uy, uz, T, Rg):
 
 def f_maxwell_t(v, n, ux, uy, uz, T, Rg):
 
-    f = f_maxwell(v, n, ux, uy, uz, T, Rg)
-
-    return f
+    return f_maxwell(v, n, ux, uy, uz, T, Rg)
 
 class VelocityGrid:
     def __init__(self, vx_, vy_, vz_):
@@ -303,9 +301,9 @@ class Solution:
                 for j in range(6):
                     jf = self.mesh.cell_face_list[ic, j]
                     if (self.mesh.cell_face_normal_direction[ic, j] == 1):
-                        self.f_minus[jf, :, :, :] = self.f[ic, :, :, :]
+                        self.f_minus[jf, :, :, :] = self.f[ic, :, :, :].copy()
                     else:
-                        self.f_plus[jf, :, :, :] = self.f[ic, :, :, :]
+                        self.f_plus[jf, :, :, :] = self.f[ic, :, :, :].copy()
 
             # boundary condition
             # loop over all boundary faces
@@ -315,9 +313,9 @@ class Solution:
                 bc_type = self.problem.bc_type_list[bc_num]
                 bc_data = self.problem.bc_data[bc_num]
                 if (self.mesh.bound_face_info[j, 2] == 1):
-                    self.f_plus[jf, :, :, :] =  set_bc(self.gas_params, bc_type, bc_data, self.f_minus[jf, :, :, :], self.v, self.vn[jf, :, :, :])
+                    self.f_plus[jf, :, :, :] =  set_bc(self.gas_params, bc_type, bc_data, self.f_minus[jf, :, :, :], self.v, self.vn[jf, :, :, :]).copy()
                 else:
-                    self.f_minus[jf, :, :, :] = set_bc(self.gas_params, bc_type, bc_data, self.f_plus[jf, :, :, :], self.v, -self.vn[jf, :, :, :])
+                    self.f_minus[jf, :, :, :] = set_bc(self.gas_params, bc_type, bc_data, self.f_plus[jf, :, :, :], self.v, -self.vn[jf, :, :, :]).copy()
 
             # riemann solver - compute fluxes
             for jf in range(self.mesh.nf):

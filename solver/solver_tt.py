@@ -299,7 +299,7 @@ class Solution:
         self.T = np.zeros(mesh.nc)
         self.nu = np.zeros(mesh.nc)
         self.rank = np.zeros(mesh.nc)
-        self.data = np.zeros((mesh.nc, 7))
+        self.data = np.zeros((mesh.nc, 9))
 
         self.frob_norm_iter = np.array([])
 
@@ -331,10 +331,11 @@ class Solution:
         self.data[:, 4] = self.p[:]
         self.data[:, 5] = self.T[:]
         for ic in range(self.mesh.nc):
-            self.rank[ic] = self.f[ic].erank
-        self.data[:, 6] = self.rank[:]
+            self.data[ic, 6] = self.f[ic].r[1]
+            self.data[ic, 7] = self.f[ic].r[2]
+            self.data[ic, 8] = 1. * self.f[ic].core.size / self.v.vx.size
 
-        write_tecplot(self.mesh, self.data, self.path + 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
+        write_tecplot(self.mesh, self.data, self.path + 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank1', 'rank2', 'compression'))
 
     def save_macro(self):
 

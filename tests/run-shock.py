@@ -30,7 +30,7 @@ else:
 # Parameters for argon (default)
 gas_params = Boltzmann.GasParams()
 
-Mach = 6.5
+Mach = 3.0
 Kn = 0.564
 delta = 8.0 / (5 * np.pi**0.5 * Kn)
 n_l = 2e+23
@@ -56,7 +56,7 @@ T_r = (2. * gas_params.g * Mach * Mach - (gas_params.g - 1.)) * ((gas_params.g -
 
 #print 'v_s = ', v_s
 
-nv = 64
+nv = 44
 vmax = 22 * v_s
 
 hv = 2. * vmax / nv
@@ -86,7 +86,7 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 #print 'vmax =', vmax
 
-config = Boltzmann.Config(solver = 'impl', CFL = 50., tol = 1e-3, tec_save_step = 10)
+config = Boltzmann.Config(solver = 'impl', CFL = .5, tol = 1e-7, tec_save_step = 10)
 
 path = '../mesh/mesh-shock/'
 mesh = Mesh()

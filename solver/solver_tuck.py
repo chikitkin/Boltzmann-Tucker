@@ -257,7 +257,7 @@ class Solution:
         self.T = np.zeros(mesh.nc)
         self.nu = np.zeros(mesh.nc)
         self.rank = np.zeros(mesh.nc)
-        self.data = np.zeros((mesh.nc, 7))
+        self.data = np.zeros((mesh.nc, 10))
 
         self.frob_norm_iter = np.array([])
 
@@ -289,60 +289,66 @@ class Solution:
         self.data[:, 4] = self.p[:]
         self.data[:, 5] = self.T[:]
         for ic in range(self.mesh.nc):
-            self.rank[ic] = np.mean(self.f[ic].r)
-        self.data[:, 6] = self.rank[:]
+            self.data[ic, 6] = self.f[ic].r[0]
+            self.data[ic, 7] = self.f[ic].r[1]
+            self.data[ic, 8] = self.f[ic].r[2]
+            self.data[ic, 9] = 1. * (self.f[ic].core.size + self.f[ic].u[0].size + self.f[ic].u[1].size + self.f[ic].u[2].size) / self.v.vx.size
 
-        write_tecplot(self.mesh, self.data, self.path + 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
+        write_tecplot(self.mesh, self.data, self.path + 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank1', 'rank2', 'rank3', 'compression'))
 
     def save_macro(self):
-
+        
         np.savetxt(self.path + 'macro.txt', self.data)
 
-     def save_restart(self):
-         """ Save the solution into a file
+    def save_restart(self):
+        """ Save the solution into a file
          """
+        m = np.max([self.f[i].r for i in range(self.mesh.nc)])
+        
+        F = np.zeros((m * m * m + self.v.nvx * m + self.v.nvy * m + self.v.nvz * m + 4, self.mesh.nc))
+        
+        for i in range(self.mesh.nc):
+            F[-1:, i] = m
+            F[-4:-1, i] = np.array(self.f[i].r)
+            F[:self.f[i].core.size, i] = self.f[i].core.ravel()
+            index = m * m * m
+            F[index : index + self.f[i].u[0].size, i] = self.f[i].u[0].ravel()
+            index = m * m * m + self.v.nvx * m
+            F[index : index + self.f[i].u[1].size, i] = self.f[i].u[1].ravel()
+            index = m * m * m + self.v.nvx * m + self.v.nvy * m
+            F[index : index + self.f[i].u[2].size, i] = self.f[i].u[2].ravel()
 
-         m = np.max([self.f[i].r for i in range(self.mesh.nc)])
+        np.save(self.path + 'restart.npy', F)#, fmt='%s')
 
-         F = np.zeros((m * m * m + self.v.nvx * m + self.v.nvy * m + self.v.nvz * m + 4, self.mesh.nc))
+    def load_restart(self):
+        """ Load the solution from a file
+        """
+        F = np.load(self.config.init_filename)
 
-         for i in range(self.mesh.nc):
-             F[-1:, i] = m
-             F[-4:-1, i] = np.array(self.f[i].r)
-             F[:self.f[i].core.size, i] = self.f[i].core.ravel()
-             F[m * m * m : self.f[i].u[0].size, i] = self.f[i].u[0].ravel()
-             F[m * m * m + self.v.nvx * m : self.f[i].u[1].size, i] = self.f[i].u[1].ravel()
-             F[m * m * m + self.v.nvx * m + self.v.nvy * m : self.f[i].u[2].size, i] = self.f[i].u[2].ravel()
+        f = list()
 
-         np.save(self.path + 'restart.npy', F)#, fmt='%s')
+        m = F[-1, 0]
 
-     def load_restart(self):
-         """ Load the solution from a file
-         """
+        for i in range(self.mesh.nc):
 
-         F = np.load(self.config.init_filename)
+            t = tuck.tensor()
 
-         f = list()
+            t.n = [self.v.nvx, self.v.nvy, self.v.nvz]
+            
+            t.r = F[-4:-1, i]
 
-         m = F[-1, 0]
+            t.core = F[:t.r[0]*t.r[1]*t.r[2]].reshape((t.r[0], t.r[1], t.r[2]))
 
-         for i in range(self.mesh.nc):
+            index = m * m * m
+            t.u[0] = F[index : index + self.v.nvx * t.r[0]].reshape((self.v.nvx, t.r[0]))
+            index = m * m * m + self.v.nvx * m
+            t.u[1] = F[index : index + self.v.nvy * t.r[1]].reshape((self.v.nvy, t.r[1]))
+            index = m * m * m + self.v.nvx * m + self.v.nvy * m
+            t.u[2] = F[index : index + self.v.nvz * t.r[2]].reshape((self.v.nvz, t.r[2]))
 
-             t = tuck.tensor()
+            f.append(t)
 
-             t.n = [self.v.nvx, self.v.nvy, self.v.nvz]
-             
-             t.r = F[-4:-1, i]
-
-             t.core = F[:t.r[0]*t.r[1]*t.r[2]].reshape((t.r[0], t.r[1], t.r[2]))
-
-             t.u[0] = F[m * m * m : self.v.nvx * t.r[0]].reshape((self.v.nvx, t.r[0]))
-             t.u[1] = F[m * m * m + self.v.nvx * m : self.v.nvy * t.r[1]].reshape((self.v.nvy, t.r[1]))
-             t.u[2] = F[m * m * m + self.v.nvx * m + self.v.nvy * m : self.v.nvz * t.r[2]].reshape((self.v.nvz, t.r[2]))
-
-             f.append(t)
-
-         return f
+        return f
 
     def plot_macro(self):
 
