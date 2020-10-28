@@ -30,7 +30,7 @@ else:
 # Parameters for argon (default)
 gas_params = Boltzmann.GasParams()
 
-Mach = 3.0
+Mach = 6.5
 Kn = 0.564
 delta = 8.0 / (5 * np.pi**0.5 * Kn)
 n_l = 2e+23
@@ -56,7 +56,7 @@ T_r = (2. * gas_params.g * Mach * Mach - (gas_params.g - 1.)) * ((gas_params.g -
 
 #print 'v_s = ', v_s
 
-nv = 44
+nv = 64
 vmax = 22 * v_s
 
 hv = 2. * vmax / nv
@@ -86,7 +86,11 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 #print 'vmax =', vmax
 
-config = Boltzmann.Config(solver = 'impl', CFL = .5, tol = 1e-7, tec_save_step = 10)
+solver = 'impl'
+CFL = 50.
+tol = 1e-7
+
+config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 10)
 
 path = '../mesh/mesh-shock/'
 mesh = Mesh()
@@ -98,20 +102,21 @@ mesh.read_starcd(path, l_s)
 # f.close()
 # =============================================================================
 
-print('Initialization...')
-t1 = time.clock()
 S = Boltzmann.Solution(gas_params, problem, mesh, v, config)
-t2 = time.clock()
-print('Complete! Took', str(t2 - t1), 'seconds')
 
 log = open(S.path + 'log.txt', 'w') #log file (w+)
 log.close()
 
 log = open(S.path + 'log.txt', 'a')
+log.write('mesh = ' + path + '\n')
 log.write('Mach = ' + str(Mach) + '\n')
+log.write('nv = ' + str(nv) + '\n')
+log.write('solver = ' + str(solver) + '\n')
+log.write('CFL = ' + str(CFL) + '\n')
+log.write('tol = ' + str(tol) + '\n')
 log.close()
 
-nt = 1000
+nt = 3000
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()

@@ -75,32 +75,35 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 #print 'vmax =', vmax
 
-config = Boltzmann.Config(solver = 'impl', CFL = 50., tol = 1e-3, tec_save_step = 10)
+solver = 'impl'
+CFL = 50.
+tol = 1e-7
+
+config = Boltzmann.Config(solver, CFL, tol, init_type = 'restart', init_filename = 'restart.npy', tec_save_step = 10)
 
 path = '../mesh/mesh-cyl/'
 mesh = Mesh()
 mesh.read_starcd(path, l_s)
 
-# =============================================================================
-# f = open('../mesh/mesh-cyl/mesh-cyl.pickle', 'rb')
-# mesh = pickle.load(file = f)
-# f.close()
-# =============================================================================
+#f = open('../mesh/mesh-cyl/mesh-cyl.pickle', 'rb')
+#mesh = pickle.load(file = f)
+#f.close()
 
-print('Initialization...')
-t1 = time.clock()
 S = Boltzmann.Solution(gas_params, problem, mesh, v, config)
-t2 = time.clock()
-print('Complete! Took', str(t2 - t1), 'seconds')
 
 log = open(S.path + 'log.txt', 'w') #log file (w+)
 log.close()
 
 log = open(S.path + 'log.txt', 'a')
+log.write('mesh = ' + path + '\n')
 log.write('Mach = ' + str(Mach) + '\n')
+log.write('nv = ' + str(nv) + '\n')
+log.write('solver = ' + str(solver) + '\n')
+log.write('CFL = ' + str(CFL) + '\n')
+log.write('tol = ' + str(tol) + '\n')
 log.close()
 
-nt = 600
+nt = 2000
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()
@@ -110,6 +113,8 @@ log.write('Time  = ' + time.strftime('%H:%M:%S', time.gmtime(t2 - t1)) + '\n')
 log.close()
 
 S.save_macro()
+
+S.plot_macro()
 
 log = open(S.path + 'log.txt', 'a')
 log.write('Residual = ' + str('{0:5.2e}'.format(S.frob_norm_iter[-1]/S.frob_norm_iter[0])) + '\n')

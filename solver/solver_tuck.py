@@ -181,7 +181,7 @@ class Solution:
         self.v = v
         self.config = config
 
-        self.path = './' + 'job_tucker_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H:%M:%S") + '/'
+        self.path = './' + 'job_tuck_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H:%M:%S") + '/'
         os.mkdir(self.path)
 
         self.vn = [None] * mesh.nf # list of tensors of normal velocities at each mesh face
@@ -327,7 +327,7 @@ class Solution:
 
         f = list()
 
-        m = F[-1, 0]
+        m = int(F[-1, 0])
 
         for i in range(self.mesh.nc):
 
@@ -335,16 +335,16 @@ class Solution:
 
             t.n = [self.v.nvx, self.v.nvy, self.v.nvz]
             
-            t.r = F[-4:-1, i]
+            t.r = F[-4:-1, i].astype(np.int)
 
-            t.core = F[:t.r[0]*t.r[1]*t.r[2]].reshape((t.r[0], t.r[1], t.r[2]))
+            t.core = F[:t.r[0]*t.r[1]*t.r[2], i].reshape((t.r[0], t.r[1], t.r[2]))
 
             index = m * m * m
-            t.u[0] = F[index : index + self.v.nvx * t.r[0]].reshape((self.v.nvx, t.r[0]))
+            t.u[0] = F[index : index + self.v.nvx * t.r[0], i].reshape((self.v.nvx, t.r[0]))
             index = m * m * m + self.v.nvx * m
-            t.u[1] = F[index : index + self.v.nvy * t.r[1]].reshape((self.v.nvy, t.r[1]))
+            t.u[1] = F[index : index + self.v.nvy * t.r[1], i].reshape((self.v.nvy, t.r[1]))
             index = m * m * m + self.v.nvx * m + self.v.nvy * m
-            t.u[2] = F[index : index + self.v.nvz * t.r[2]].reshape((self.v.nvz, t.r[2]))
+            t.u[2] = F[index : index + self.v.nvz * t.r[2], i].reshape((self.v.nvz, t.r[2]))
 
             f.append(t)
 
@@ -490,6 +490,8 @@ class Solution:
             # save rhs norm and tec tile
             if ((self.it % config.tec_save_step) == 0):
                 self.write_tec()
+            if ((self.it % 100) == 0):
+                self.save_restart()
 
         self.save_restart()
         self.write_tec()

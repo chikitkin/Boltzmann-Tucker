@@ -42,6 +42,9 @@ class VelocityGrid:
 
         self.v2 = self.vx*self.vx + self.vy*self.vy + self.vz*self.vz
 
+        self.zero = np.zeros((self.nvx, self.nvy, self.nvz), dtype = np.double)
+        self.ones = np.ones((self.nvx, self.nvy, self.nvz), dtype = np.double)
+
 class GasParams:
     Na = 6.02214129e+23 # Avogadro constant
     kB = 1.381e-23 # Boltzmann constant, J / K
@@ -206,6 +209,7 @@ class Solution:
             self.vn[jf, :, :, :] = mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy + mesh.face_normals[jf, 2] * v.vz
 
         self.diag = np.zeros((mesh.nc, v.nvx, v.nvy, v.nvz)) # part of diagonal coefficient in implicit scheme
+        self.incr = np.zeros((v.nvx, v.nvy, v.nvz), dtype = np.double)
         # precompute diag
         for ic in range(mesh.nc):
             for j in range(6):
@@ -301,9 +305,9 @@ class Solution:
                 for j in range(6):
                     jf = self.mesh.cell_face_list[ic, j]
                     if (self.mesh.cell_face_normal_direction[ic, j] == 1):
-                        self.f_minus[jf, :, :, :] = self.f[ic, :, :, :].copy()
+                        self.f_minus[jf, :, :, :] = self.f[ic, :, :, :]
                     else:
-                        self.f_plus[jf, :, :, :] = self.f[ic, :, :, :].copy()
+                        self.f_plus[jf, :, :, :] = self.f[ic, :, :, :]
 
             # boundary condition
             # loop over all boundary faces
@@ -313,9 +317,9 @@ class Solution:
                 bc_type = self.problem.bc_type_list[bc_num]
                 bc_data = self.problem.bc_data[bc_num]
                 if (self.mesh.bound_face_info[j, 2] == 1):
-                    self.f_plus[jf, :, :, :] =  set_bc(self.gas_params, bc_type, bc_data, self.f_minus[jf, :, :, :], self.v, self.vn[jf, :, :, :]).copy()
+                    self.f_plus[jf, :, :, :] =  set_bc(self.gas_params, bc_type, bc_data, self.f_minus[jf, :, :, :], self.v, self.vn[jf, :, :, :])
                 else:
-                    self.f_minus[jf, :, :, :] = set_bc(self.gas_params, bc_type, bc_data, self.f_plus[jf, :, :, :], self.v, -self.vn[jf, :, :, :]).copy()
+                    self.f_minus[jf, :, :, :] = set_bc(self.gas_params, bc_type, bc_data, self.f_plus[jf, :, :, :], self.v, -self.vn[jf, :, :, :])
 
             # riemann solver - compute fluxes
             for jf in range(self.mesh.nf):
@@ -353,6 +357,7 @@ class Solution:
             elif (self.config.solver == 'impl'):
                 for ic in range(self.mesh.nc - 1, -1, -1):
                     self.df[ic, :, :, :] = self.rhs[ic, :, :, :]
+                for ic in range(self.mesh.nc - 1, -1, -1):
                     # loop over neighbors of cell ic
                     for j in range(6):
                         jf = self.mesh.cell_face_list[ic, j]
@@ -363,23 +368,23 @@ class Solution:
                             self.df[ic, :, :, :] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
                             * vnm * self.df[icn, : , :, :]
                     # divide by diagonal coefficient
-                    self.df[ic, :, :, :] = self.df[ic, :, :, :] / (np.ones((self.v.nvx, self.v.nvy, self.v.nvz)) * (1/self.tau + self.nu[ic]) + self.diag[ic])
+                    self.df[ic, :, :, :] = self.df[ic, :, :, :] / (self.v.ones * (1. / self.tau + self.nu[ic]) + self.diag[ic])
                 #
                 # Forward sweep
                 #
                 for ic in range(self.mesh.nc):
                     # loop over neighbors of cell ic
-                    incr = np.zeros((self.v.nvx, self.v.nvy, self.v.nvz))
+                    self.incr[:] = 0.
                     for j in range(6):
                         jf = self.mesh.cell_face_list[ic, j]
                         icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
                         vnm = np.where(self.mesh.cell_face_normal_direction[ic, j] * self.vn[jf, :, :, :] < 0,
                                             self.mesh.cell_face_normal_direction[ic, j] * self.vn[jf, :, :, :], 0.)
                         if (icn >= 0 ) and (icn < ic):
-                            incr+= -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
+                            self.incr += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
                             * vnm * self.df[icn, : , :, :]
                     # divide by diagonal coefficient
-                    self.df[ic, :, :, :] += incr / (np.ones((self.v.nvx, self.v.nvy, self.v.nvz)) * (1./self.tau + self.nu[ic]) + self.diag[ic])
+                    self.df[ic, :, :, :] += self.incr / (self.v.ones * (1. / self.tau + self.nu[ic]) + self.diag[ic])
                 self.f += self.df
                 #
                 # end of LU-SGS iteration

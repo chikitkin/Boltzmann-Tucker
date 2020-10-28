@@ -1,7 +1,8 @@
+# this code was taken from https://github.com/rakhuba/tucker3d and slightly reworked
+
 import numpy as np
 import copy
 #import scipy.interpolate as interpolate
-
 
 class tensor:
 

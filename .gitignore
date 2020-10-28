@@ -3,6 +3,10 @@
 *.dat
 *.txt
 *.png
-job*
-.ipynb*
+
 *.out
+*.ipynb*
+
+job*
+run/*
+run_*
