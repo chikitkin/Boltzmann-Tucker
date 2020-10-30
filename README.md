@@ -12,3 +12,5 @@ Short description of the current version:
 
 Solver is based on the customized part of the library https://github.com/rakhuba/tucker3d.
 
+In the old version of the solver (solver_tt.py) we used the Tensor-Train decomposition and the library ttpy: https://github.com/oseledets/ttpy.
+
