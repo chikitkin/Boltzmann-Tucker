@@ -93,14 +93,16 @@ tol = 1e-7
 config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 10)
 
 path = '../mesh/mesh-shock/'
-mesh = Mesh()
-mesh.read_starcd(path, l_s)
+#mesh = Mesh()
+#mesh.read_starcd(path, l_s)
 
-# =============================================================================
-# f = open('../mesh/mesh-cyl/mesh-cyl.pickle', 'rb')
-# mesh = pickle.load(file = f)
-# f.close()
-# =============================================================================
+#f = open('../mesh/mesh-shock/mesh-shock.pickle', 'wb')
+#pickle.dump(mesh, f)
+#f.close()
+
+f = open('../mesh/mesh-shock/mesh-shock.pickle', 'rb')
+mesh = pickle.load(file = f)
+f.close()
 
 S = Boltzmann.Solution(gas_params, problem, mesh, v, config)
 

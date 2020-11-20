@@ -195,7 +195,7 @@ class Solution:
             self.vn[jf] = mesh.face_normals[jf, 0] * v.vx_t + mesh.face_normals[jf, 1] * v.vy_t + mesh.face_normals[jf, 2] * v.vz_t
             self.vnp[jf] = tuck.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
             self.vnm[jf] = tuck.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
-            self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 4) # TODO rmax
+            self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 6) # WAS 4
 
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))
@@ -490,7 +490,7 @@ class Solution:
             # save rhs norm and tec tile
             if ((self.it % config.tec_save_step) == 0):
                 self.write_tec()
-            if ((self.it % 100) == 0):
+            if ((self.it % 25) == 0):
                 self.save_restart()
 
         self.save_restart()

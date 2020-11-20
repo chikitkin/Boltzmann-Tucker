@@ -77,17 +77,21 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 solver = 'impl'
 CFL = 50.
-tol = 1e-7
+tol = 1e-6
 
-config = Boltzmann.Config(solver, CFL, tol, init_type = 'restart', init_filename = 'restart.npy', tec_save_step = 10)
+config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 10)
 
 path = '../mesh/mesh-cyl/'
-mesh = Mesh()
-mesh.read_starcd(path, l_s)
+#mesh = Mesh()
+#mesh.read_starcd(path, l_s)
 
-#f = open('../mesh/mesh-cyl/mesh-cyl.pickle', 'rb')
-#mesh = pickle.load(file = f)
+#f = open('../mesh/mesh-cyl/mesh-cyl.pickle', 'wb')
+#pickle.dump(mesh, f)
 #f.close()
+
+f = open('../mesh/mesh-cyl/mesh-cyl.pickle', 'rb')
+mesh = pickle.load(file = f)
+f.close()
 
 S = Boltzmann.Solution(gas_params, problem, mesh, v, config)
 

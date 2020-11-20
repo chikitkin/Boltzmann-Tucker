@@ -42,8 +42,8 @@ class VelocityGrid:
 
         self.v2 = self.vx*self.vx + self.vy*self.vy + self.vz*self.vz
 
-        self.zero = np.zeros((self.nvx, self.nvy, self.nvz), dtype = np.double)
-        self.ones = np.ones((self.nvx, self.nvy, self.nvz), dtype = np.double)
+        self.zero = np.zeros((self.nvx, self.nvy, self.nvz))
+        self.ones = np.ones((self.nvx, self.nvy, self.nvz))
 
 class GasParams:
     Na = 6.02214129e+23 # Avogadro constant
