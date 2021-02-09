@@ -124,7 +124,7 @@ def comp_macro_params(f, v, gas_params):
 
     u2 = ux*ux + uy*uy + uz*uz
 
-    T = (1. / (3. * n * gas_params.Rg)) * (v.hv3 * tuck.sum((v.v2 * f)) - n * u2)
+    T = (1. / (3. * n * gas_params.Rg)) * (v.hv3 * tuck.sum(v.v2 * f) - n * u2)
     if T <= 0.:
         T = 1.
 
@@ -195,7 +195,10 @@ class Solution:
             self.vn[jf] = mesh.face_normals[jf, 0] * v.vx_t + mesh.face_normals[jf, 1] * v.vy_t + mesh.face_normals[jf, 2] * v.vz_t
             self.vnp[jf] = tuck.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
             self.vnm[jf] = tuck.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
-            self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 6) # WAS 4
+            if mesh.isbound[jf]:
+                self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 6) # TODO WAS 4
+            else:
+                self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 4)
 
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))

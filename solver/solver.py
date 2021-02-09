@@ -96,8 +96,7 @@ def set_bc(gas_params, bc_type, bc_data, f, v, vn):
         return bc_data[0]
     elif (bc_type == 'wall'): # wall
         # unpack bc_data
-        T_w = bc_data[0]
-        fmax = f_maxwell(v, 1., 0., 0., 0., T_w, gas_params.Rg)
+        fmax = bc_data[0]
         Ni = v.hv3 * np.sum(f * np.where(vn > 0., vn, 0.))
         Nr = v.hv3 * np.sum(fmax * np.where(vn < 0., vn, 0.))
         n_wall = - Ni/ Nr
@@ -335,9 +334,9 @@ class Solution:
                     jf = self.mesh.cell_face_list[ic, j]
                     self.rhs[ic, :, :, :] += - (self.mesh.cell_face_normal_direction[ic, j]) * (1. / self.mesh.cell_volumes[ic]) * self.flux[jf, :, :, :]
                     # Compute macroparameters and collision integral
-                    J, self.n[ic], self.ux[ic], self.uy[ic], self.uz[ic], self.T[ic], self.rho[ic], self.p[ic], self.nu[ic] = \
-                    comp_j(self.f[ic, :, :, :], self.v, self.gas_params)
-                    self.rhs[ic, :, :, :] += J
+                J, self.n[ic], self.ux[ic], self.uy[ic], self.uz[ic], self.T[ic], self.rho[ic], self.p[ic], self.nu[ic] = \
+                comp_j(self.f[ic, :, :, :], self.v, self.gas_params)
+                self.rhs[ic, :, :, :] += J
 
             self.frob_norm_iter = np.append(self.frob_norm_iter, np.linalg.norm(self.rhs))
 
@@ -368,7 +367,7 @@ class Solution:
                             self.df[ic, :, :, :] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
                             * vnm * self.df[icn, : , :, :]
                     # divide by diagonal coefficient
-                    self.df[ic, :, :, :] = self.df[ic, :, :, :] / (self.v.ones * (1. / self.tau + self.nu[ic]) + self.diag[ic])
+                    self.df[ic, :, :, :] = self.df[ic, :, :, :] / ((1. / self.tau + self.nu[ic]) + self.diag[ic])
                 #
                 # Forward sweep
                 #
@@ -384,7 +383,7 @@ class Solution:
                             self.incr += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
                             * vnm * self.df[icn, : , :, :]
                     # divide by diagonal coefficient
-                    self.df[ic, :, :, :] += self.incr / (self.v.ones * (1. / self.tau + self.nu[ic]) + self.diag[ic])
+                    self.df[ic, :, :, :] += self.incr / ((1. / self.tau + self.nu[ic]) + self.diag[ic])
                 self.f += self.df
                 #
                 # end of LU-SGS iteration

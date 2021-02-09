@@ -247,12 +247,14 @@ class Mesh:
                 else:
                     self.cell_face_normal_direction[ic, jf] = -1
 
+        self.isbound = np.zeros(self.nf, dtype=bool)
         self.bound_face_info = np.zeros((self.nbf, 3), dtype = np.int)
         for ibf in range(self.nbf):
             for jf in range(self.nf):
                 # bc_face_vert_sets[1:nbf], bc_face_vert_sets[i].push(ivert)
                 if (set(self.bcface_vert_lists[ibf, :]) == set(self.face_vert_list[jf, :])):
                     self.bound_face_info[ibf, 0] = jf
+                    self.isbound[jf] = True
                     break
 
             for ic in range(self.nc):
