@@ -234,7 +234,7 @@ class Solution:
 
         for jf in range(mesh.nf):
             self.vn_tmp = mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy + mesh.face_normals[jf, 2] * v.vz
-            self.vn[jf] = mesh.face_normals[jf, 0] * v.vx_t + mesh.face_normals[jf, 1] * v.vy_t + mesh.face_normals[jf, 2] * v.vz_t
+            self.vn[jf] = (mesh.face_normals[jf, 0] * v.vx_t + mesh.face_normals[jf, 1] * v.vy_t + mesh.face_normals[jf, 2] * v.vz_t).round(1e-3)
             self.vnp[jf] = tt.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
             self.vnm[jf] = tt.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
             self.vn_abs[jf] = tt.tensor(np.abs(self.vn_tmp), rmax = 4)

@@ -77,7 +77,7 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 solver = 'impl'
 CFL = 50.
-tol = 1e-6
+tol = 1e-3
 
 config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 10)
 
@@ -105,9 +105,10 @@ log.write('nv = ' + str(nv) + '\n')
 log.write('solver = ' + str(solver) + '\n')
 log.write('CFL = ' + str(CFL) + '\n')
 log.write('tol = ' + str(tol) + '\n')
+log.write('comment: new boundary ranks')
 log.close()
 
-nt = 2000
+nt = 750
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()

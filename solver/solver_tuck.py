@@ -192,10 +192,10 @@ class Solution:
 
         for jf in range(mesh.nf):
             self.vn_tmp = mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy + mesh.face_normals[jf, 2] * v.vz
-            self.vn[jf] = mesh.face_normals[jf, 0] * v.vx_t + mesh.face_normals[jf, 1] * v.vy_t + mesh.face_normals[jf, 2] * v.vz_t
+            self.vn[jf] = (mesh.face_normals[jf, 0] * v.vx_t + mesh.face_normals[jf, 1] * v.vy_t + mesh.face_normals[jf, 2] * v.vz_t).round(1e-3)
             self.vnp[jf] = tuck.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
             self.vnm[jf] = tuck.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
-            if mesh.isbound[jf]:
+            if (mesh.isbound[jf] != -1) and (mesh.bound_face_info[mesh.isbound[jf], 1] == 3): # increase rank if wall
                 self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 6) # TODO WAS 4
             else:
                 self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 4)
