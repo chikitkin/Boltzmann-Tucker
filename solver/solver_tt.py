@@ -126,7 +126,7 @@ class Problem:
         # Function to set initial condition
         self.f_init = f_init
 
-def set_bc(gas_params, bc_type, bc_data, f, v, vn, vnp, vnm, tol):
+def set_bc(gas_params, bc_type, bc_data, f, v, vn, vn_abs, tol):
     """Set boundary condition
     """
     if (bc_type == 'sym-x'): # symmetry in x
@@ -146,8 +146,8 @@ def set_bc(gas_params, bc_type, bc_data, f, v, vn, vnp, vnm, tol):
     elif (bc_type == 'wall'): # wall
         # unpack bc_data
         fmax = bc_data[0]
-        Ni = v.hv3 * tt.sum((f * vnp).round(tol))
-        Nr = v.hv3 * tt.sum((fmax * vnm).round(tol))
+        Ni = v.hv3 * tt.sum((0.5 * f * (vn + vn_abs)).round(tol))
+        Nr = v.hv3 * tt.sum((0.5 * fmax * (vn - vn_abs)).round(tol))
         n_wall = - Ni/ Nr
         return n_wall * fmax
 
@@ -228,16 +228,16 @@ class Solution:
 
         self.vn = [None] * mesh.nf # list of tensors of normal velocities at each mesh face
         self.vn_tmp = np.zeros((v.nvx, v.nvy, v.nvz))
-        self.vnm = [None] * mesh.nf # negative part of vn: 0.5 * (vn - |vn|)
-        self.vnp = [None] * mesh.nf # positive part of vn: 0.5 * (vn + |vn|)
+#        self.vnm = [None] * mesh.nf # negative part of vn: 0.5 * (vn - |vn|)
+#        self.vnp = [None] * mesh.nf # positive part of vn: 0.5 * (vn + |vn|)
         self.vn_abs = [None] * mesh.nf # approximations of |vn|
 
         for jf in range(mesh.nf):
             self.vn_tmp = mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy + mesh.face_normals[jf, 2] * v.vz
             self.vn[jf] = (mesh.face_normals[jf, 0] * v.vx_t + mesh.face_normals[jf, 1] * v.vy_t + mesh.face_normals[jf, 2] * v.vz_t).round(1e-3)
-            self.vnp[jf] = tt.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
-            self.vnm[jf] = tt.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
-            self.vn_abs[jf] = tt.tensor(np.abs(self.vn_tmp), rmax = 4)
+#            self.vnp[jf] = tt.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
+#            self.vnm[jf] = tt.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
+            self.vn_abs[jf] = tt.tensor(np.abs(self.vn_tmp), rmax = 6)
 
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))
@@ -259,11 +259,11 @@ class Solution:
                 diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
                 diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic])
             self.diag_r1[ic] = diag_sc * self.vn_abs_r1
-            diag_t_full = tt.tensor(diag_temp, 1e-7, rmax = 1).full()
-            if (np.amax(diag_temp - diag_t_full) > 0.):
-                ind_max = np.unravel_index(np.argmax(diag_temp - diag_t_full), diag_temp.shape)
-                diag_t_full = (diag_temp[ind_max] / diag_t_full[ind_max]) * diag_t_full
-            self.diag[ic] = tt.tensor(diag_t_full)
+#            diag_t_full = tuck.tensor(diag_temp).round(1e-7, rmax = 1).full()
+            diag_t_full = self.diag_r1[ic].full()
+            ind_min = np.unravel_index(np.argmin(diag_t_full / diag_temp), diag_temp.shape)
+#            diag_t_full = (diag_temp[ind_max] / diag_t_full[ind_max]) * diag_t_full
+            self.diag_r1[ic] = (diag_temp[ind_min] / diag_t_full[ind_min]) * self.diag_r1[ic]
 
         # set initial condition
         self.f = [None] * mesh.nc # RENAME f!
@@ -412,9 +412,9 @@ class Solution:
                 bc_type = self.problem.bc_type_list[bc_num]
                 bc_data = self.problem.bc_data[bc_num]
                 if (self.mesh.bound_face_info[j, 2] == 1):
-                    self.f_plus[jf] =  set_bc(self.gas_params, bc_type, bc_data, self.f_minus[jf], self.v, self.vn[jf], self.vnp[jf], self.vnm[jf], config.tol)
+                    self.f_plus[jf] =  set_bc(self.gas_params, bc_type, bc_data, self.f_minus[jf], self.v, self.vn[jf], self.vn_abs[jf], config.tol)
                 else:
-                    self.f_minus[jf] = set_bc(self.gas_params, bc_type, bc_data, self.f_plus[jf], self.v, -self.vn[jf], -self.vnm[jf], -self.vnp[jf], config.tol)
+                    self.f_minus[jf] = set_bc(self.gas_params, bc_type, bc_data, self.f_plus[jf], self.v, -self.vn[jf], self.vn_abs[jf], config.tol)
 
             # riemann solver - compute fluxes
             for jf in range(self.mesh.nf):
@@ -436,7 +436,7 @@ class Solution:
                 self.rhs[ic] += J
                 self.rhs[ic] = self.rhs[ic].round(config.tol)
 
-            self.frob_norm_iter = np.append(self.frob_norm_iter, np.sqrt(sum([(self.rhs[ic].norm())**2 for ic in range(self.mesh.nc)])))
+            self.frob_norm_iter = np.append(self.frob_norm_iter, np.sqrt(sum([(self.rhs[ic].norm())**2 for ic in range(self.mesh.nc)])) / self.mesh.nc)
 
             self.update_res()
             #

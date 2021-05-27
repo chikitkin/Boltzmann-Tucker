@@ -6,7 +6,7 @@ import time
 from mesh.read_starcd import Mesh
 import pickle
 
-tensor_format = 'full'
+tensor_format = 'tuck'
 
 if tensor_format == 'full':
     import solver.solver as Boltzmann
@@ -118,7 +118,7 @@ def main():
     log.write('tol = ' + str(tol) + '\n')
     log.close()
 
-    nt = 10 #3000
+    nt = 25
     t1 = time.time()
     S.make_time_steps(config, nt)
     t2 = time.time()

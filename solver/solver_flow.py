@@ -4,6 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 plt.switch_backend('agg')
 from mesh.read_starcd import write_tecplot
+import tucker.tucker as tuck
 import os
 from datetime import datetime
 
@@ -77,7 +78,7 @@ class Problem:
         # Function to set initial condition
         self.f_init = f_init
 
-def set_bc(gas_params, bc_type, bc_data, f, v, vn):
+def set_bc(gas_params, bc_type, bc_data, f, v, vn, vn_abs):
     """Set boundary condition
     """
     if (bc_type == 'sym-x'): # symmetry in x
@@ -97,8 +98,8 @@ def set_bc(gas_params, bc_type, bc_data, f, v, vn):
     elif (bc_type == 'wall'): # wall
         # unpack bc_data
         fmax = bc_data[0]
-        Ni = v.hv3 * np.sum(f * np.where(vn > 0., vn, 0.))
-        Nr = v.hv3 * np.sum(fmax * np.where(vn < 0., vn, 0.))
+        Ni = v.hv3 * np.sum(0.5 * f * (vn + vn_abs))
+        Nr = v.hv3 * np.sum(0.5 * fmax * (vn - vn_abs))
         n_wall = - Ni/ Nr
         return n_wall * fmax
 
@@ -175,7 +176,7 @@ class Solution:
         self.v = v
         self.config = config
 
-        self.path = './' + 'job_full_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H:%M:%S") + '/'
+        self.path = './' + 'job_flow_' + config.solver + '_' + datetime.now().strftime("%Y.%m.%d_%H:%M:%S") + '/'
         os.mkdir(self.path)
 
         self.h = np.min(mesh.cell_diam)
@@ -204,8 +205,13 @@ class Solution:
         self.rhs = np.zeros((mesh.nc, v.nvx, v.nvy, v.nvz))
         self.df = np.zeros((mesh.nc, v.nvx, v.nvy, v.nvz)) # Array for increments \Delta f
         self.vn = np.zeros((mesh.nf, v.nvx, v.nvy, v.nvz))
+        self.vn_abs = [None] * mesh.nf # approximations of |vn|
+
+        self.vn_abs_r1 = (tuck.tensor((v.vx**2 + v.vy**2 + v.vz**2)**0.5).round(1e-7, rmax = 1)).full()
+
         for jf in range(mesh.nf):
             self.vn[jf, :, :, :] = mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy + mesh.face_normals[jf, 2] * v.vz
+            self.vn_abs[jf] = (tuck.tensor(np.abs(self.vn[jf, :, :, :])).round(1e-14, rmax = 6)).full()
 
         self.diag = np.zeros((mesh.nc, v.nvx, v.nvy, v.nvz)) # part of diagonal coefficient in implicit scheme
         self.incr = np.zeros((v.nvx, v.nvy, v.nvz), dtype = np.double)
@@ -316,14 +322,14 @@ class Solution:
                 bc_type = self.problem.bc_type_list[bc_num]
                 bc_data = self.problem.bc_data[bc_num]
                 if (self.mesh.bound_face_info[j, 2] == 1):
-                    self.f_plus[jf, :, :, :] =  set_bc(self.gas_params, bc_type, bc_data, self.f_minus[jf, :, :, :], self.v, self.vn[jf, :, :, :])
+                    self.f_plus[jf, :, :, :] =  set_bc(self.gas_params, bc_type, bc_data, self.f_minus[jf, :, :, :], self.v, self.vn[jf, :, :, :], self.vn_abs[jf])
                 else:
-                    self.f_minus[jf, :, :, :] = set_bc(self.gas_params, bc_type, bc_data, self.f_plus[jf, :, :, :], self.v, -self.vn[jf, :, :, :])
+                    self.f_minus[jf, :, :, :] = set_bc(self.gas_params, bc_type, bc_data, self.f_plus[jf, :, :, :], self.v, -self.vn[jf, :, :, :], self.vn_abs[jf])
 
             # riemann solver - compute fluxes
             for jf in range(self.mesh.nf):
-                self.flux[jf, :, :, :] = self.mesh.face_areas[jf] * self.vn[jf, :, :, :] * \
-                np.where((self.vn[jf, :, :, :] < 0), self.f_plus[jf, :, :, :], self.f_minus[jf, :, :, :])
+                self.flux[jf, :, :, :] = 0.5 * self.mesh.face_areas[jf] * self.vn[jf, :, :, :] * \
+                ((self.f_plus[jf, :, :, :] + self.f_minus[jf, :, :, :]) * self.vn[jf, :, :, :]  - (self.f_plus[jf, :, :, :] - self.f_minus[jf, :, :, :]) * self.vn_abs[jf])
                 # flux[jf] = (1. / 2.) * mesh.face_areas[jf] * ((vn * (f_plus[jf, :, :, :] + f_minus[jf, :, :, :])) - (vn_abs * (f_plus[jf, :, :, :] - f_minus[jf, :, :, :])))
 
             # computation of the right-hand side

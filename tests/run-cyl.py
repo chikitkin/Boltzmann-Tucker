@@ -22,6 +22,10 @@ elif tensor_format == 'tuck':
     import tucker.tucker as tuck
     import solver.solver_tuck as Boltzmann
 
+elif tensor_format == 'flow':
+    import tucker.tucker as tuck
+    import solver.solver_flow as Boltzmann
+
 else:
     raise Exception('Wrong arguments!')
 
@@ -76,10 +80,10 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 #print 'vmax =', vmax
 
 solver = 'impl'
-CFL = 50.
-tol = 1e-3
+CFL = 50.0
+tol = 1e-3	
 
-config = Boltzmann.Config(solver, CFL, tol, tec_save_step = 10)
+config = Boltzmann.Config(solver, CFL, tol, init_type = 'macro_restart', init_filename = 'macro_full.txt', tec_save_step = 10)
 
 path = '../mesh/mesh-cyl/'
 #mesh = Mesh()
@@ -108,7 +112,7 @@ log.write('tol = ' + str(tol) + '\n')
 log.write('comment: new boundary ranks')
 log.close()
 
-nt = 750
+nt = 1000
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()

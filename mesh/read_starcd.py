@@ -248,7 +248,7 @@ class Mesh:
                     self.cell_face_normal_direction[ic, jf] = -1
 
         self.isbound = -np.ones(self.nf, dtype = np.int)
-        self.bound_face_info = np.zeros((self.nbf, 3), dtype = np.int)
+        self.bound_face_info = np.zeros((self.nbf, 3), dtype = np.int) # global index of boundary face, boundary type, normal direction
         for ibf in range(self.nbf):
             for jf in range(self.nf):
                 # bc_face_vert_sets[1:nbf], bc_face_vert_sets[i].push(ivert)

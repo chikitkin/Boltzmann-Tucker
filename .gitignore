@@ -3,6 +3,7 @@
 *.dat
 *.txt
 *.png
+*.eps
 
 *.out
 *.ipynb*
@@ -10,3 +11,5 @@
 job*
 run/*
 run_*
+
+tests/3D-plots.py
