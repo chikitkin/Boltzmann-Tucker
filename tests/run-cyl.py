@@ -81,7 +81,7 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 solver = 'impl'
 CFL = 50.0
-tol = 1e-3	
+tol = 1e-5	
 
 config = Boltzmann.Config(solver, CFL, tol, init_type = 'macro_restart', init_filename = 'macro_full.txt', tec_save_step = 10)
 

@@ -328,7 +328,7 @@ class Solution:
 
             # riemann solver - compute fluxes
             for jf in range(self.mesh.nf):
-                self.flux[jf, :, :, :] = 0.5 * self.mesh.face_areas[jf] * self.vn[jf, :, :, :] * \
+                self.flux[jf, :, :, :] = 0.5 * self.mesh.face_areas[jf] * \
                 ((self.f_plus[jf, :, :, :] + self.f_minus[jf, :, :, :]) * self.vn[jf, :, :, :]  - (self.f_plus[jf, :, :, :] - self.f_minus[jf, :, :, :]) * self.vn_abs[jf])
                 # flux[jf] = (1. / 2.) * mesh.face_areas[jf] * ((vn * (f_plus[jf, :, :, :] + f_minus[jf, :, :, :])) - (vn_abs * (f_plus[jf, :, :, :] - f_minus[jf, :, :, :])))
 
@@ -367,11 +367,13 @@ class Solution:
                     for j in range(6):
                         jf = self.mesh.cell_face_list[ic, j]
                         icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
-                        vnm = np.where(self.mesh.cell_face_normal_direction[ic, j] * self.vn[jf, :, :, :] < 0,
-                                            self.mesh.cell_face_normal_direction[ic, j] * self.vn[jf, :, :, :], 0.)
+                        if self.mesh.cell_face_normal_direction[ic, j] == 1:
+                            vnm_loc = 0.5 * (self.vn[jf, :, :, :] - self.vn_abs_r1) # vnm[jf]
+                        else:
+                            vnm_loc = - 0.5 * (self.vn[jf, :, :, :] + self.vn_abs_r1) # -vnp[jf]
                         if (icn >= 0 ) and (icn > ic):
                             self.df[ic, :, :, :] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
-                            * vnm * self.df[icn, : , :, :]
+                            * vnm_loc * self.df[icn, : , :, :]
                     # divide by diagonal coefficient
                     self.df[ic, :, :, :] = self.df[ic, :, :, :] / ((1. / self.tau + self.nu[ic]) + self.diag[ic])
                 #
@@ -383,11 +385,13 @@ class Solution:
                     for j in range(6):
                         jf = self.mesh.cell_face_list[ic, j]
                         icn = self.mesh.cell_neighbors_list[ic, j] # index of neighbor
-                        vnm = np.where(self.mesh.cell_face_normal_direction[ic, j] * self.vn[jf, :, :, :] < 0,
-                                            self.mesh.cell_face_normal_direction[ic, j] * self.vn[jf, :, :, :], 0.)
+                        if self.mesh.cell_face_normal_direction[ic, j] == 1:
+                            vnm_loc = 0.5 * (self.vn[jf, :, :, :] - self.vn_abs_r1) # vnm[jf]
+                        else:
+                            vnm_loc = - 0.5 * (self.vn[jf, :, :, :] + self.vn_abs_r1) # -vnp[jf]
                         if (icn >= 0 ) and (icn < ic):
                             self.incr += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
-                            * vnm * self.df[icn, : , :, :]
+                            * vnm_loc * self.df[icn, : , :, :]
                     # divide by diagonal coefficient
                     self.df[ic, :, :, :] += self.incr / ((1. / self.tau + self.nu[ic]) + self.diag[ic])
                 self.f += self.df
