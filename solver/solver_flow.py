@@ -214,14 +214,26 @@ class Solution:
             self.vn_abs[jf] = (tuck.tensor(np.abs(self.vn[jf, :, :, :])).round(1e-14, rmax = 6)).full()
 
         self.diag = np.zeros((mesh.nc, v.nvx, v.nvy, v.nvz)) # part of diagonal coefficient in implicit scheme
+        self.diag_r1 = [None] * mesh.nc
         self.incr = np.zeros((v.nvx, v.nvy, v.nvz), dtype = np.double)
         # precompute diag
         for ic in range(mesh.nc):
+            diag_temp = np.zeros((v.nvx, v.nvy, v.nvz))
+            diag_sc = 0.
             for j in range(6):
                 jf = mesh.cell_face_list[ic, j]
-                vnp = np.where(mesh.cell_face_normal_direction[ic, j] * self.vn[jf, :, :, :] > 0,
-                                        mesh.cell_face_normal_direction[ic, j] * self.vn[jf, :, :, :], 0.)
-                self.diag[ic, :, :, :] += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp
+                vn_full = (mesh.face_normals[jf, 0] * v.vx + mesh.face_normals[jf, 1] * v.vy \
+                           + mesh.face_normals[jf, 2] * v.vz) * mesh.cell_face_normal_direction[ic, j]
+                vnp_full = np.where(vn_full > 0, vn_full, 0.)
+                vn_abs_full = np.abs(vn_full)
+                diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
+                diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic])
+            self.diag_r1[ic] = diag_sc * self.vn_abs_r1
+#            diag_t_full = tuck.tensor(diag_temp).round(1e-7, rmax = 1).full()
+            diag_t_full = self.diag_r1[ic]
+            ind_min = np.unravel_index(np.argmin(diag_t_full / diag_temp), diag_temp.shape)
+#            diag_t_full = (diag_temp[ind_max] / diag_t_full[ind_max]) * diag_t_full
+            self.diag_r1[ic] = (diag_temp[ind_min] / diag_t_full[ind_min]) * self.diag_r1[ic]
 
         # Arrays for macroparameters
         self.n = np.zeros(mesh.nc)
@@ -375,7 +387,7 @@ class Solution:
                             self.df[ic, :, :, :] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
                             * vnm_loc * self.df[icn, : , :, :]
                     # divide by diagonal coefficient
-                    self.df[ic, :, :, :] = self.df[ic, :, :, :] / ((1. / self.tau + self.nu[ic]) + self.diag[ic])
+                    self.df[ic, :, :, :] = self.df[ic, :, :, :] / ((1. / self.tau + self.nu[ic]) + self.diag_r1[ic])
                 #
                 # Forward sweep
                 #
@@ -393,7 +405,7 @@ class Solution:
                             self.incr += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
                             * vnm_loc * self.df[icn, : , :, :]
                     # divide by diagonal coefficient
-                    self.df[ic, :, :, :] += self.incr / ((1. / self.tau + self.nu[ic]) + self.diag[ic])
+                    self.df[ic, :, :, :] += self.incr / ((1. / self.tau + self.nu[ic]) + self.diag_r1[ic])
                 self.f += self.df
                 #
                 # end of LU-SGS iteration

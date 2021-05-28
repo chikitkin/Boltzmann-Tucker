@@ -69,6 +69,12 @@ def reflect_tt(a, ax):
         return a.from_list(l)
 
 class VelocityGrid:
+    """Class of velocity grid
+    Contains full and tucker tensors of vx, vy, vz, parameters of the grid and
+    other auxillary tensors
+   
+    vx_, vy_, vz_ - 1d numpy arrays for each dimention
+    """
     def __init__(self, vx_, vy_, vz_):
         self.vx_ = vx_
         self.vy_ = vy_
@@ -95,6 +101,8 @@ class VelocityGrid:
         self.ones = tt.ones((self.nvx, self.nvy, self.nvz))
 
 class GasParams:
+    """Class of gas parameters
+    """
     Na = 6.02214129e+23 # Avogadro constant
     kB = 1.381e-23 # Boltzmann constant, J / K
     Ru = 8.3144598 # Universal gas constant
@@ -115,6 +123,8 @@ class GasParams:
         self.d = d # diameter of molecule
 
 class Problem:
+    """Class of initial and boundary conditions of the problem
+    """
     def __init__(self, bc_type_list = None, bc_data = None, f_init = None):
         # list of boundary conditions' types
         # acording to order in starcd '.bnd' file
@@ -152,10 +162,13 @@ def set_bc(gas_params, bc_type, bc_data, f, v, vn, vn_abs, tol):
         return n_wall * fmax
 
 def comp_macro_params(f, v, gas_params):
-    # takes "F" with (1, 1, 1, 1) ranks to perform to_list function
-    # takes precomputed "ones_tt" tensor
-    # "ranks" array for mean ranks
-    # much less rounding
+    """Computes macroscopic parameters of the gas
+    for given distribution function
+
+    f - d.f. tensor
+    v - VelocityGrid
+    gas_params - GasParams
+    """
     n = v.hv3 * tt.sum(f)
     if n <= 0.:
         n = 1e+10
@@ -178,7 +191,13 @@ def comp_macro_params(f, v, gas_params):
     return n, ux, uy, uz, T, rho, p, nu
 
 def comp_j(f, v, gas_params):
+    """Computes S-model collision integral and macroscopic parameters of the gas
+    for given distribution function
 
+    f - d.f. tensor
+    v - VelocityGrid
+    gas_params - GasParams
+    """
     n, ux, uy, uz, T, rho, p, nu = comp_macro_params(f, v, gas_params)
 
     cx = tt_from_factors((1. / ((2. * gas_params.Rg * T) ** (1. / 2.))) * (v.vx_ - ux), np.ones(v.nvy), np.ones(v.nvz))
@@ -306,18 +325,21 @@ class Solution:
         self.create_res()
 
     def create_res(self):
-
+        """Creates file for RHS
+        """
         resfile = open(self.path + 'res.txt', 'w')
         resfile.close()
 
     def update_res(self):
-
+        """Write RHS in a file
+        """
         resfile = open(self.path + 'res.txt', 'a')
         resfile.write('%10.5E \n'% (self.frob_norm_iter[-1]))
         resfile.close()
 
     def write_tec(self):
-
+        """Creates a tecplot data file 
+        """
         fig, ax = plt.subplots(figsize = (20,10))
         line, = ax.semilogy(self.frob_norm_iter/self.frob_norm_iter[0])
         ax.set(title='$Steps =$' + str(self.it))
@@ -338,7 +360,8 @@ class Solution:
         write_tecplot(self.mesh, self.data, self.path + 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank1', 'rank2', 'compression'))
 
     def save_macro(self):
-
+        """Save macro restart
+        """    
         np.savetxt(self.path + 'macro.txt', self.data)
 
     def save_restart(self):
@@ -387,7 +410,8 @@ class Solution:
         plt.close()
 
     def make_time_steps(self, config, nt):
-
+        """Makes nt time steps of the solution
+        """
         self.config = config
         self.tau = self.h * config.CFL / (np.max(np.abs(self.v.vx_)) * (3.**0.5))
 

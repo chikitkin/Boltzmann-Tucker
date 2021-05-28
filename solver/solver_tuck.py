@@ -37,7 +37,7 @@ def f_maxwell_t(v, n, ux, uy, uz, T, Rg):
 
 class VelocityGrid:
     """Class of velocity grid
-    Contains full and tucker tensors of \xi, parameters of the grid and
+    Contains full and tucker tensors of vx, vy, vz, parameters of the grid and
     other auxillary tensors
    
     vx_, vy_, vz_ - 1d numpy arrays for each dimention
