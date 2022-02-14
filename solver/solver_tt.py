@@ -256,7 +256,10 @@ class Solution:
             self.vn[jf] = (mesh.face_normals[jf, 0] * v.vx_t + mesh.face_normals[jf, 1] * v.vy_t + mesh.face_normals[jf, 2] * v.vz_t).round(1e-3)
 #            self.vnp[jf] = tt.tensor(np.where(self.vn_tmp > 0, self.vn_tmp, 0.), eps = config.tol)
 #            self.vnm[jf] = tt.tensor(np.where(self.vn_tmp < 0, self.vn_tmp, 0.), eps = config.tol)
-            self.vn_abs[jf] = tt.tensor(np.abs(self.vn_tmp), rmax = 6)
+            if (mesh.isbound[jf] != -1) and (mesh.bound_face_info[mesh.isbound[jf], 1] == 3): # increase rank if wall
+                self.vn_abs[jf] = tt.tensor(np.abs(self.vn_tmp), rmax = 6)
+            else:
+                self.vn_abs[jf] = tt.tensor(np.abs(self.vn_tmp), rmax = 6) # NOT A WALL
 
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))
@@ -478,6 +481,9 @@ class Solution:
             elif (self.config.solver == 'impl'):
                 for ic in range(self.mesh.nc - 1, -1, -1):
                     self.df[ic] = self.rhs[ic].copy()
+                #
+                # Backward sweep
+                #
                 for ic in range(self.mesh.nc - 1, -1, -1):
                     # loop over neighbors of cell ic
                     for j in range(6):
@@ -488,14 +494,12 @@ class Solution:
                         else:
                             vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
                         if (icn >= 0 ) and (icn > ic):
-        #                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
-        #                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn])
                             self.df[ic] += -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
                             * vnm_loc * self.df[icn]
                             self.df[ic] = self.df[ic].round(config.tol)
                     # divide by diagonal coefficient
-                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
-                    self.df[ic] = div_tt(self.df[ic], diag_temp) # TODO
+                    diag_temp = ((1./self.tau + self.nu[ic]) * self.v.ones + self.diag_r1[ic]).round(1e-3, rmax = 1)
+                    self.df[ic] = div_tt(self.df[ic], diag_temp)
                     self.df[ic] = self.df[ic].round(config.tol)
                 #
                 # Forward sweep
@@ -511,13 +515,11 @@ class Solution:
                         else:
                             vnm_loc = - 0.5 * (self.vn[jf] + self.vn_abs_r1) # -vnp[jf]
                         if (icn >= 0 ) and (icn < ic):
-        #                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
-        #                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn]
                             incr+= -(self.mesh.face_areas[jf] / self.mesh.cell_volumes[ic]) \
                             * vnm_loc * self.df[icn]
                             incr = incr.round(config.tol)
                     # divide by diagonal coefficient
-                    diag_temp = (self.v.ones * (1./self.tau + self.nu[ic]) + self.diag_r1[ic]).round(1e-3, rmax = 1)
+                    diag_temp = ((1./self.tau + self.nu[ic]) * self.v.ones + self.diag_r1[ic]).round(1e-3, rmax = 1)
                     self.df[ic] += div_tt(incr, diag_temp)
                     self.df[ic] = self.df[ic].round(config.tol)
                 #
@@ -532,6 +534,8 @@ class Solution:
             # save rhs norm and tec tile
             if ((self.it % config.tec_save_step) == 0):
                 self.write_tec()
+            if ((self.it % 25) == 0):
+                self.save_restart()
 
         self.save_restart()
         self.write_tec()

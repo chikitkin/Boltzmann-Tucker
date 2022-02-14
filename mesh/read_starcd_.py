@@ -16,82 +16,57 @@ class Mesh:
         #
         # Read vertex list and bc type for each boundary face
         #
-        data = np.loadtxt(path + 'star.bnd', usecols=(1,2,3,4,5))
-        self.nbf = data.shape[0]
+        data = open(path + 'mesh.mesh', 'r')
+        Lines = data.readlines()
+        
+        for i, line in enumerate(Lines):
+            if line == 'Vertices\n':
+                self.nv = int(Lines[i + 1])
+                VerticesIndex = i + 2
+            if line == 'Hexahedra\n':
+                self.nc = int(Lines[i + 1])
+                HexahedraIndex = i + 2
+            if line == 'Quadrilaterals\n':
+                self.nbf = int(Lines[i + 1])
+                QuadrilateralsIndex = i + 2
+        
         print('Number of boundary faces = ', self.nbf)
-        self.bcface_vert_lists = data[:,0:-1].astype(np.int) - 1 # -1 due to Python counts from 0
-        self.bcface_bctype = data[:,-1].astype(np.int) - 1
+        self.bcface_vert_lists = np.array([list(map(int, line.strip().split()[:-1])) for line in Lines[QuadrilateralsIndex : QuadrilateralsIndex + self.nbf]]) - 1 
+        self.bcface_bctype = np.array([int(line.strip().split()[-1]) for line in Lines[QuadrilateralsIndex : QuadrilateralsIndex + self.nbf]])
         #
         # Construct list of boundary faces indices for each bctype
         #
-        self.nbc = len(set(self.bcface_bctype)) # Number of different boundary conditions
+        self.nbc = len(set(self.bcface_bctype.tolist())) # Number of different boundary conditions
         print('Number of boundary conditions = ', self.nbc)
         self.bf_for_each_bc = []
-        for i in range(self.nbc):
+        for i in range(max(self.bcface_bctype)):
             self.bf_for_each_bc.append(np.argwhere(self.bcface_bctype == i)[:,0])
         #
         # Count number of cells
         #
-        file = open(path + 'star.cel')
-        nc = 0
-        for i, l in enumerate(file):
-            verts = np.array(list(map(int, l.split()[1:max_vert_in_cell+1])), dtype = np.int)
-            # Check, is it "shell" cell?
-            if(np.all(verts[4::] != 0)):
-                nc += 1 # else it is shell
-        file.close()
-        self.nc = nc
         print('Number of cells = ', self.nc)
-        # Count number of vertices
-        file = open(path + 'star.vrt')
-        for i, l in enumerate(file):
-            pass
-        file.close()
-        self.nv = i + 1
         print('Number of vertices = ', self.nv)
-
-        # Allocate arrays
-        self.bc_index_list = np.zeros(shape = (self.nbf), dtype = np.int)
-        # for each face - list of vertices' indices
-        self.bc_face_vertices = np.zeros(shape = (self.nbf, max_vert_in_face), dtype = np.int)
 
         self.vert_coo = np.zeros((self.nv, 3))
         self.vert_list_for_cell = np.zeros((self.nc, max_vert_in_cell), dtype = int)
-        # Read bc index for each boundary face
-        file = open(path + 'star.bnd')
-        for i, l in enumerate(file):
-            tokens = l.split()
-            for j in range(max_vert_in_face):
-                self.bc_face_vertices[i, j] = int(tokens[j+1])
-            self.bc_index_list[i] = int(tokens[j+2]) # index of boundary condition
-        file.close()
-        # Compute number of faces in each boundary condition
-        pass
-        #
-        # Read vertices's coordinates
-        #
-        self.vert_coo = scale * np.loadtxt(fname = path + 'star.vrt', usecols=(1,2,3))
+
+        self.vert_coo = scale * np.array([list(map(float, line.strip().split()[:-1])) for line in Lines[VerticesIndex : VerticesIndex + self.nv]])
         #
         # Read vertex lists for cells
         #
-        file = open(path + 'star.cel')
-        j = 0
-        for i, l in enumerate(file):
-            verts = np.array(list(map(int, l.split()[1:max_vert_in_cell+1])), dtype = np.int)
-            # Check, is it "shell" cell?
-            if np.all(verts[4::] != 0): # else it is shell
-                # Convert order to StarCD
-                verts = verts[[4, 5, 7, 6, 0, 1, 3, 2]]
-                # Convert order to Gambit
-                verts = verts[[6, 7, 2, 3, 4, 5, 0, 1]]
-                self.vert_list_for_cell[j,:] = verts - 1 # since Python counts from 0
-                j += 1
-        file.close()
+        self.vert_list_for_cell = np.array([list(map(int, line.strip().split()[:-1])) for line in Lines[HexahedraIndex : HexahedraIndex + self.nc]])
+        # Convert order to StarCD
+        self.vert_list_for_cell = self.vert_list_for_cell[:, [4, 5, 6, 7, 0, 1, 2, 3]]
+        self.vert_list_for_cell = self.vert_list_for_cell[:, [4, 5, 7, 6, 0, 1, 3, 2]]
+        # Convert order to Gambit
+        self.vert_list_for_cell = self.vert_list_for_cell[:, [6, 7, 2, 3, 4, 5, 0, 1]]
+        self.vert_list_for_cell = self.vert_list_for_cell - 1 # since Python counts from 0   
+        data.close()
         #
         # Calculate cell centers - arithmetic mean of vertises' coordinates
         #
-        self.cell_center_coo = np.zeros((nc, 3))
-        for i in range(nc):
+        self.cell_center_coo = np.zeros((self.nc, 3))
+        for i in range(self.nc):
             verts_inds = self.vert_list_for_cell[i,:]
             self.cell_center_coo[i,:] = np.sum(self.vert_coo[verts_inds,:],axis=0)/max_vert_in_cell
         #
@@ -99,7 +74,7 @@ class Mesh:
         #
         faces = np.zeros((4,6), dtype = np.int) # 4 verices in each of 6 faces
         tetra = np.zeros((3, 4)) # 3 - x, y, z coordinates; 4 - number of vertex in tetra
-        self.cell_volumes = np.zeros(nc)
+        self.cell_volumes = np.zeros(self.nc)
         for ic in range(self.nc):
             verts = self.vert_list_for_cell[ic,:]
             # construct faces of cell

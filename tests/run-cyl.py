@@ -81,9 +81,9 @@ problem = Boltzmann.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y
 
 solver = 'impl'
 CFL = 50.0
-tol = 1e-5	
+tol = 1e-4	
 
-config = Boltzmann.Config(solver, CFL, tol, init_type = 'macro_restart', init_filename = 'macro_full.txt', tec_save_step = 10)
+config = Boltzmann.Config(solver, CFL, tol, init_type = 'default', tec_save_step = 10)
 
 path = '../mesh/mesh-cyl/'
 #mesh = Mesh()
@@ -112,7 +112,7 @@ log.write('tol = ' + str(tol) + '\n')
 log.write('comment: new boundary ranks')
 log.close()
 
-nt = 1000
+nt = 750
 t1 = time.time()
 S.make_time_steps(config, nt)
 t2 = time.time()

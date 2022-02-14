@@ -43,7 +43,6 @@ class VelocityGrid:
     vx_, vy_, vz_ - 1d numpy arrays for each dimention
     """
     def __init__(self, vx_, vy_, vz_):
-
         self.vx_ = vx_
         self.vy_ = vy_
         self.vz_ = vz_
@@ -187,6 +186,7 @@ def comp_j(f, v, gas_params):
     return J, n, ux, uy, uz, T, rho, p, nu
 
 class Config:
+
     def __init__(self, solver, CFL, tol, init_type = 'default', init_filename = None, tec_save_step = 1e+5):
 
         self.solver = solver # type of the solver (expl or impl)
@@ -226,7 +226,7 @@ class Solution:
             if (mesh.isbound[jf] != -1) and (mesh.bound_face_info[mesh.isbound[jf], 1] == 3): # increase rank if wall
                 self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 6) 
             else:
-                self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 6) # TODO WAS 4
+                self.vn_abs[jf] = tuck.tensor(np.abs(self.vn_tmp)).round(1e-14, rmax = 6) # NOT A WALL
 
         self.h = np.min(mesh.cell_diam)
         self.tau = self.h * config.CFL / (np.max(np.abs(v.vx_)) * (3.**0.5))
@@ -486,7 +486,7 @@ class Solution:
                     # divide by diagonal coefficient
                     diag_temp = ((1./self.tau + self.nu[ic]) * self.v.ones + self.diag_r1[ic]).round(1e-3, rmax = 1)
                     self.df[ic] = tuck.div_1r(self.df[ic], diag_temp)
-                    self.df[ic] = self.df[ic].round(config.tol) # TODO
+                    self.df[ic] = self.df[ic].round(config.tol)
                 #
                 # Forward sweep
                 #
